@@ -3,7 +3,7 @@ on:
     types: [ opened, synchronize ]
 
 jobs:
-  gui:
+  gui-test:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -11,11 +11,8 @@ jobs:
 
       - uses: actions/setup-go@v3
 
-      - name: Go Build and Test
+      - name: Test Fyne Build
         run: | 
-          #test the code
-          go test -v -a .
-
           #test the build
           git clone https://github.com/fyne-io/fyne-cross.git
           cd fyne-cross
@@ -25,3 +22,15 @@ jobs:
  
           #windows/linux/darwin
           /tmp/fyne-cross linux -app-id EW.Messenger
+
+  gui-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v3
+
+      - name: Go Test
+        run: |
+          docker build .
