@@ -23,7 +23,7 @@ jobs:
           go build .
           mv fyne-cross /tmp
 
-          cd ../endless_waltz/gui    
+          cd ..  
 
           #fyne commands
           go get
