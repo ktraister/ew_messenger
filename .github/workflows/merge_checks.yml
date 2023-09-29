@@ -13,6 +13,15 @@ jobs:
 
       - name: Go Build and Test
         run: | 
+          #test the code
           go test -v -a .
-          go build .
 
+          #test the build
+          git clone https://github.com/fyne-io/fyne-cross.git
+          cd fyne-cross
+          go build .
+          mv fyne-cross /tmp
+          cd ..  
+ 
+          #windows/linux/darwin
+          /tmp/fyne-cross linux -app-id EW.Messenger
