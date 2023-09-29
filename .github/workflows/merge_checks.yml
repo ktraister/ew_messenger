@@ -3,7 +3,7 @@ on:
     types: [ opened, synchronize ]
 
 jobs:
-  gui-test:
+  gui-build:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -23,7 +23,7 @@ jobs:
           #windows/linux/darwin
           /tmp/fyne-cross linux -app-id EW.Messenger
 
-  gui-build:
+  gui-test:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
