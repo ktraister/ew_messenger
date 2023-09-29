@@ -1,0 +1,38 @@
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - endless_waltz/gui/**
+    branches:
+      - "140_messenger_build"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v3
+
+      - name: Go Build
+        run: | 
+          #install fyne-cross
+          git clone https://github.com/fyne-io/fyne-cross.git
+          cd fyne-cross
+          go build .
+          mv fyne-cross /tmp
+
+          cd ../endless_waltz/gui    
+
+          #fyne commands
+          go get
+
+          #windows/linux/darwin
+          /tmp/fyne-cross windows -app-id EW.Messenger
+          /tmp/fyne-cross linux -app-id EW.Messenger
+
+          #ugh why is mac such a pain in the ass!!
+          #fyne-cross darwin-sdk-extract --xcode-path /path/to/Command_Line_Tools_for_Xcode_12.5.dmg
+          #fyne-cross darwin -app-id EW.Messenger --macosx-sdk-path /full/path/to/SDKs/MacOSX12.5.sdk
+          #

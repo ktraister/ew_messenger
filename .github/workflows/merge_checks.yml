@@ -1,0 +1,17 @@
+on:
+  pull_request:
+    types: [ opened, synchronize ]
+
+jobs:
+  gui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v3
+
+      - name: Go Build and Test
+        run: | 
+          go test -v -a .
+
