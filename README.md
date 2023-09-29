@@ -58,3 +58,7 @@ selected, the messages are stashed until the user is selected.
 In an indefinite loop, the client reaches out to the Exchange API path
 `/listUsers` every five seconds. The returned current client list is then
 alphabetized and returned to the UI. The UI is refreshed accordingly.
+
+## Dockerfile
+The dockerfile's sole purpose is to execute the tests in a platform-agnostic
+manner for the merge checks. Do not tamper with it!
