@@ -1,8 +1,8 @@
 package main
 
 import (
-	"log"
 	"embed"
+	"log"
 	"time"
 
 	"github.com/faiface/beep"
@@ -10,9 +10,8 @@ import (
 	"github.com/faiface/beep/speaker"
 )
 
-        //go:embed audio
-	var content embed.FS
-
+//go:embed audio
+var content embed.FS
 
 func playSound() {
 	f, err := content.Open("audio/warning_beep.mp3")
