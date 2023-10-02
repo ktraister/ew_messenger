@@ -16,47 +16,32 @@ type Configurations struct {
 	Passwd      string
 }
 
-func fetchConfig() (Configurations, error) {
+func fetchConfig() Configurations {
 	var configuration Configurations
-	//contents of temp config file
-	contents := "randomURL: \"http://localhost:8090/api/otp\"\nexchangeURL: \"ws://localhost:8081/ws\"\nlogLevel: \"Debug\"\n"
+	//create default config
+	fmt.Println("Defulat configo")
+	defaultConfig := Configurations{
+		RandomURL:   "randomapi.endlesswaltz.xyz",
+		ExchangeURL: "exchange.endlesswaltz.xyz",
+		LogLevel:    "Error",
+	}
 
 	currentUser, err := user.Current()
 	if err != nil {
 		fmt.Println("Unable to get current user: ", err)
-		return configuration, err
+		return defaultConfig
 	}
 
 	// Get the user's home directory
 	configDir := fmt.Sprintf("%s/.ew", currentUser.HomeDir)
 	configFile := fmt.Sprintf("%s/config.yml", configDir)
 
-	//check if directory exists and create if not
-	if _, err := os.Stat(configDir); os.IsNotExist(err) {
-		fmt.Println("no config dir found, creating...")
-		if err := os.Mkdir(configDir, os.ModePerm); err != nil {
-			fmt.Println("Unable to create config home dir: ", err)
-			return configuration, err
-		}
-	}
-
-	//check if actual config file exists, create if not
+	//check if config file exists, skip if not
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		fmt.Println("no config file found, creating...")
-		file, err := os.Create(configFile)
-		if err != nil {
-			fmt.Println("Unable to create config file", err)
-			return configuration, err
-		}
-
-		// Write contents to the file
-		_, err = file.WriteString(contents)
-		if err != nil {
-			fmt.Println("Unable to write temp contents to config file", err)
-			return configuration, err
-		}
-		file.Close()
+		return defaultConfig
 	}
+
+	fmt.Println("Config file exists, reading...")
 
 	viper.SetConfigName("config")
 	viper.AddConfigPath("$HOME/.ew/")
@@ -64,13 +49,13 @@ func fetchConfig() (Configurations, error) {
 
 	if err := viper.ReadInConfig(); err != nil {
 		fmt.Println("Viper:Error reading config file: ", err)
-		return configuration, err
+		return defaultConfig
 	}
 	err = viper.Unmarshal(&configuration)
 	if err != nil {
 		fmt.Println("Viper:Unable to decode into struct: ", err)
-		return configuration, err
+		return defaultConfig
 	}
 
-	return configuration, nil
+	return configuration
 }

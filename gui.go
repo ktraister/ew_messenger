@@ -154,7 +154,7 @@ func post(configuration Configurations, container *fyne.Container) {
 			container.Add(messageLabel)
 			//we're not focused on the user the message is from
 		} else if targetUser != message.User && configuration.User != message.User {
-	                //we're not focused on the user the message is from
+			//we're not focused on the user the message is from
 			//stash the message for now
 			stashedMessages = append(stashedMessages, message)
 		} else if message.ok {
@@ -231,10 +231,10 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 			text := obj.(*fyne.Container).Objects[0].(*widget.Label)
 			text.SetText(users[id])
 			if messageStashed(users[id]) {
-		                //turn the user blue if we have messages from them
+				//turn the user blue if we have messages from them
 				text.Importance = widget.HighImportance
 			} else {
-			        //reset user text
+				//reset user text
 				text.Importance = widget.MediumImportance
 			}
 		})
@@ -327,11 +327,7 @@ func afterLogin(logger *logrus.Logger, configuration Configurations, myApp fyne.
 
 func main() {
 	//configuration stuff
-	configuration, err := fetchConfig()
-	if err != nil {
-		return
-	}
-
+	configuration := fetchConfig()
 	logger := createLogger(configuration.LogLevel, "normal")
 
 	// Reading variables using the model
