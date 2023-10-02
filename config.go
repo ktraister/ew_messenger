@@ -19,7 +19,6 @@ type Configurations struct {
 func fetchConfig() Configurations {
 	var configuration Configurations
 	//create default config
-	fmt.Println("Defulat configo")
 	defaultConfig := Configurations{
 		RandomURL:   "randomapi.endlesswaltz.xyz",
 		ExchangeURL: "exchange.endlesswaltz.xyz",

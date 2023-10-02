@@ -129,4 +129,5 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 
 	incomingMsg := Post{User: dat["user"].(string), Msg: pad_decrypt(dat["msg"].(string), pad, private_key), ok: true}
 	incomingMsgChan <- incomingMsg
+	playSound()
 }

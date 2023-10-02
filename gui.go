@@ -152,7 +152,6 @@ func post(configuration Configurations, container *fyne.Container) {
 		if message.User == "Sending messages to" {
 			messageLabel := widget.NewLabelWithStyle("Sending messages to: "+message.Msg, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 			container.Add(messageLabel)
-			//we're not focused on the user the message is from
 		} else if targetUser != message.User && configuration.User != message.User {
 			//we're not focused on the user the message is from
 			//stash the message for now
