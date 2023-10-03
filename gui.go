@@ -208,7 +208,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 
 	// add onlineUsers panel to show and select users
 	onlineUsers := container.NewHBox(text)
-	onlineUsers = container.NewBorder(topLine, bLine, nil, sideLine2, onlineUsers)
+	onlineUsers = container.NewBorder(nil, bLine, nil, sideLine2, onlineUsers)
 	onlineUsers = container.NewBorder(onlineUsers, nil, nil, sideLine)
 
 	//add a goroutine here to read ExchangeAPI for live users and populate with labels
