@@ -1,6 +1,8 @@
-FROM ghcr.io/ktraister/fyne_builder_nix:latest 
+FROM ghcr.io/ktraister/ew_messenger_tester:latest 
 
 ENV TEST=true
+ENV CGO_ENABLED=1
+ENV GOOS=linux
 
 WORKDIR /src/
 ADD . /src/
