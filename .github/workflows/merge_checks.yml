@@ -5,6 +5,7 @@ on:
 jobs:
   gui-build:
     runs-on: ubuntu-latest
+    environment: ci
     steps:
       - name: checkout
         uses: actions/checkout@v3
@@ -32,6 +33,7 @@ jobs:
 
   gui-test:
     runs-on: ubuntu-latest
+    environment: ci
     steps:
       - name: checkout
         uses: actions/checkout@v3
