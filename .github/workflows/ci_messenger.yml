@@ -27,10 +27,11 @@ jobs:
           go get
 
           #windows/linux/darwin
-          /tmp/fyne-cross windows -app-id EW.Messenger
-          mv ./fyne-cross/dist/windows-amd64/ew_messenger.exe.zip ./win_ew_messenger.tar.xz
+          /tmp/fyne-cross windows -app-id EW.Messenger -image ghcr.io/ktraister/fyne_builder_win:latest
+          /tmp/fyne-cross linux -app-id EW.Messenger -image ghcr.io/ktraister/fyne_builder_nix:latest
 
-          /tmp/fyne-cross linux -app-id EW.Messenger
+          #move the binaries to an easier spot to work with
+          mv ./fyne-cross/dist/windows-amd64/ew_messenger.exe.zip ./win_ew_messenger.tar.xz
           mv ./fyne-cross/dist/linux-amd64/ew_messenger.tar.xz ./nix_ew_messenger.tar.xz
 
           #ugh why is mac such a pain in the ass!!

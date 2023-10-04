@@ -59,6 +59,13 @@ In an indefinite loop, the client reaches out to the Exchange API path
 `/listUsers` every five seconds. The returned current client list is then
 alphabetized and returned to the UI. The UI is refreshed accordingly.
 
-## Dockerfile
+## Docker
+### Root Dockerfile
 The dockerfile's sole purpose is to execute the tests in a platform-agnostic
 manner for the merge checks. Do not tamper with it!
+
+### Docker directory
+The `docker` directory is used to maintain updated Fyne builder images. The 
+linux image is also used as a base for the root dockerfile. These need to be
+here too, and can be used in case an update is needed on the custom builder 
+containers. 
