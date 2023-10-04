@@ -3,33 +3,49 @@ on:
     types: [ opened, synchronize ]
 
 jobs:
-#  gui-build:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: checkout
-#        uses: actions/checkout@v3
-#
-#      - uses: actions/setup-go@v3
-#
-#      - name: Test Fyne Build
-#        run: | 
-#          #test the build
-#          git clone https://github.com/fyne-io/fyne-cross.git
-#          cd fyne-cross
-#          go build .
-#          mv fyne-cross /tmp
-#          cd ..  
-# 
-#          #windows/linux/darwin
-#          /tmp/fyne-cross linux -app-id EW.Messenger
-
-  gui-test:
+  gui-build:
     runs-on: ubuntu-latest
+    environment: ci
     steps:
       - name: checkout
         uses: actions/checkout@v3
 
       - uses: actions/setup-go@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PULL }}
+
+      - name: Test Fyne Build
+        run: | 
+          #test the build of the fyne dep
+          git clone https://github.com/fyne-io/fyne-cross.git
+          cd fyne-cross
+          go build .
+          mv fyne-cross /tmp
+          cd ..  
+ 
+          #fyne linux build
+          /tmp/fyne-cross linux -app-id EW.Messenger -image ghcr.io/ktraister/fyne_builder_nix:latest
+
+  gui-test:
+    runs-on: ubuntu-latest
+    environment: ci
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PULL }}
 
       - name: Go Test
         run: |
