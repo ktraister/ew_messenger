@@ -13,6 +13,13 @@ jobs:
 
       - uses: actions/setup-go@v3
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_PULL }}
+
       - name: Go Build
         run: | 
           #install fyne-cross
