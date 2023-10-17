@@ -30,15 +30,16 @@ var targetUser = ""
 var stashedMessages = []Post{}
 
 func checkCreds(configuration Configurations) (bool, string) {
+        //setup tls
+        ts := tlsClient(configuration.RandomURL)
 	//check and make sure inserted creds
 	//Random and Exchange will use same mongo, so the creds will be valid for both
-
 	health_url := fmt.Sprintf("%s%s", strings.Split(configuration.RandomURL, "/otp")[0], "/healthcheck")
 	req, err := http.NewRequest("GET", health_url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", configuration.User)
 	req.Header.Set("Passwd", configuration.Passwd)
-	client := http.Client{Timeout: 3 * time.Second}
+	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	errorText := ""
 	if err != nil {

@@ -14,13 +14,16 @@ func removeIndex(s []string, index int) []string {
 }
 
 func getExUsers(logger *logrus.Logger, configuration Configurations) ([]string, error) {
+        //setup TLS client
+	ts := tlsClient(configuration.RandomURL)
+
 	urlSlice := strings.Split(configuration.ExchangeURL, "/")
-	url := "http://" + urlSlice[2] + "/listUsers"
+	url := "https://" + urlSlice[2] + "/ws/listUsers"
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", configuration.User)
 	req.Header.Set("Passwd", configuration.Passwd)
-	client := http.Client{Timeout: 3 * time.Second}
+	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Error(err)

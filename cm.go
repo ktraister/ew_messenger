@@ -69,10 +69,15 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 		return &ConnectionManager{}, err
 	}
 
+	tlsConfig := tlsConfig(configuration.ExchangeURL)
+	dialer := websocket.Dialer{
+	    TLSClientConfig: tlsConfig,
+	}
+
 	// Establish a WebSocket connection
-	conn, _, err := websocket.DefaultDialer.Dial(u.String(), http.Header{"Passwd": []string{configuration.Passwd}, "User": []string{user}})
+	conn, _, err := dialer.Dial(u.String(), http.Header{"Passwd": []string{configuration.Passwd}, "User": []string{user}})
 	if err != nil {
-		logger.Fatal("Could not establish WebSocket connection with ", u.String())
+	        logger.Fatal(fmt.Sprintf("Could not establish WebSocket connection with %s: %s", u.String(), err))
 		return &ConnectionManager{}, err
 	}
 	logger.Debug("Connected to exchange server!")

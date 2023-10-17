@@ -151,7 +151,8 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", configuration.User)
 	req.Header.Set("Passwd", passwd)
-	client := &http.Client{}
+	ts := tlsClient(configuration.RandomURL)
+	client := &http.Client{Timeout: 3 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Error(err)
