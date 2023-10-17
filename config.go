@@ -20,8 +20,8 @@ func fetchConfig() Configurations {
 	var configuration Configurations
 	//create default config
 	defaultConfig := Configurations{
-		RandomURL:   "randomapi.endlesswaltz.xyz",
-		ExchangeURL: "exchange.endlesswaltz.xyz",
+		RandomURL:   "https://api.endlesswaltz.xyz:443/api/otp",
+		ExchangeURL: "wss://exchange.endlesswaltz.xyz:443/ws",
 		LogLevel:    "Error",
 	}
 
