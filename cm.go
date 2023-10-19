@@ -86,6 +86,9 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 		conn: conn,
 	}
 
+	//defer close from the get-go
+	defer connectionManager.Close()
+
 	//connect to exchange with our username for mapping
 	message := &Message{Type: "startup", User: user}
 	b, err := json.Marshal(message)

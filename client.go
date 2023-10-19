@@ -37,7 +37,6 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	if err != nil {
 		return false
 	}
-	defer cm.Close()
 	passwd := configuration.Passwd
 	random := configuration.RandomURL
 

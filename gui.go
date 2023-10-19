@@ -95,7 +95,6 @@ func listen(logger *logrus.Logger, configuration Configurations) {
 	if err != nil {
 		return
 	}
-	defer cm.Close()
 
 	//listen for incoming connections
 	for {
