@@ -187,7 +187,6 @@ func dh_handshake(cm *ConnectionManager, logger *logrus.Logger, configuration Co
 		}
 		b, err := json.Marshal(outgoing)
 		if err != nil {
-			fmt.Println(err)
 			return "", err
 		}
 

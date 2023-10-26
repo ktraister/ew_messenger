@@ -65,7 +65,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	logger.Debug(helo)
 	b, err := json.Marshal(helo)
 	if err != nil {
-		fmt.Println(err)
+		logger.Error(helo)
 		return false
 	}
 
@@ -86,7 +86,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	logger.Debug("Client:Read init HELO response")
 
 	err = json.Unmarshal([]byte(incoming), &dat)
-	fmt.Println(dat)
+	logger.Debug(dat)
 	if err != nil {
 		logger.Error("Client:Error unmarshalling json:", err)
 		return false
@@ -152,7 +152,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	req.Header.Set("User", configuration.User)
 	req.Header.Set("Passwd", passwd)
 	ts := tlsClient(configuration.RandomURL)
-	client := &http.Client{Timeout: 3 * time.Second, Transport: ts}
+	client := &http.Client{Timeout: 10 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Error(err)
@@ -173,7 +173,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	}
 	b, err = json.Marshal(outgoing)
 	if err != nil {
-		fmt.Println(err)
+		logger.Error(err)
 		return false
 	}
 

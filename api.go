@@ -14,7 +14,7 @@ func removeIndex(s []string, index int) []string {
 }
 
 func getExUsers(logger *logrus.Logger, configuration Configurations) ([]string, error) {
-        //setup TLS client
+	//setup TLS client
 	ts := tlsClient(configuration.RandomURL)
 
 	urlSlice := strings.Split(configuration.ExchangeURL, "/")

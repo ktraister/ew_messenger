@@ -81,7 +81,7 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 	req.Header.Set("User", configuration.User)
 	req.Header.Set("Passwd", configuration.Passwd)
 	ts := tlsClient(configuration.RandomURL)
-        client := &http.Client{Timeout: 3 * time.Second, Transport: ts}
+	client := &http.Client{Timeout: 10 * time.Second, Transport: ts}
 	resp, error := client.Do(req)
 	if error != nil {
 		logger.Error(error)

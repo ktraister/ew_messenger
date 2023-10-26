@@ -30,8 +30,8 @@ var targetUser = ""
 var stashedMessages = []Post{}
 
 func checkCreds(configuration Configurations) (bool, string) {
-        //setup tls
-        ts := tlsClient(configuration.RandomURL)
+	//setup tls
+	ts := tlsClient(configuration.RandomURL)
 	//check and make sure inserted creds
 	//Random and Exchange will use same mongo, so the creds will be valid for both
 	health_url := fmt.Sprintf("%s%s", strings.Split(configuration.RandomURL, "/otp")[0], "/healthcheck")
@@ -149,7 +149,6 @@ func post(configuration Configurations, container *fyne.Container) {
 	for {
 		message := <-incomingMsgChan
 		//this approach works
-		//fmt.Println("Current user is ", targetUser)
 		if message.User == "Sending messages to" {
 			messageLabel := widget.NewLabelWithStyle("Sending messages to: "+message.Msg, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 			container.Add(messageLabel)
@@ -240,7 +239,6 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 		})
 	userList.OnSelected = func(id widget.ListItemID) {
 		messageEntry.Show()
-		fmt.Println(users[id])
 		targetUser = users[id]
 		//clear the chat when switching users
 		chatContainer.Objects = chatContainer.Objects[:0]
