@@ -75,6 +75,14 @@ func transform_pad(PAD string, PRIVKEY string) ([]string, error) {
 	final := []string{}
 
 	for _, s := range otp {
+		//logic to ensure our pad is clean. Dont ask.
+		if strings.Contains(s, "[") {
+			s = strings.Replace(s, "[", "", -1)
+		}
+		if strings.Contains(s, "]") {
+			s = strings.Replace(s, "]", "", -1)
+		}
+
 		tmpBigInt, _ = tmpBigInt.SetString(s, 0)
 		tmpBigInt.Mod(privKeyInt, tmpBigInt)
 		final = append(final, tmpBigInt.String())
