@@ -65,7 +65,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	logger.Debug(helo)
 	b, err := json.Marshal(helo)
 	if err != nil {
-		logger.Error(helo)
+		logger.Error(err)
 		return false
 	}
 
