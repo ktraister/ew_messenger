@@ -3,6 +3,9 @@ This service is used by end users to send messages to each other encrypted
 with one-time pads served by the RandomAPI. Different instances communicate 
 with each other through the Exchange websockets. 
 
+#### Mobile
+name of the mobile application will be Endless Waltz Messenger
+
 ## Operation
 All the GUI components herein are created using the Fyne framework in Go. 
 
@@ -69,3 +72,4 @@ The `docker` directory is used to maintain updated Fyne builder images. The
 linux image is also used as a base for the root dockerfile. These need to be
 here too, and can be used in case an update is needed on the custom builder 
 containers. 
+

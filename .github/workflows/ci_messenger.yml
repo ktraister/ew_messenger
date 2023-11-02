@@ -46,7 +46,15 @@ jobs:
           #fyne-cross darwin-sdk-extract --xcode-path /path/to/Command_Line_Tools_for_Xcode_12.5.dmg
           #fyne-cross darwin -app-id EW.Messenger --macosx-sdk-path /full/path/to/SDKs/MacOSX12.5.sdk
           
-      - uses: ncipollo/release-action@v1
+      - name: Release for private repo
+        uses: ncipollo/release-action@v1
         with:
           artifacts: "*.tar.xz"
           token: ${{secrets.RELEASE_TOKEN}}
+
+      - name: Release for public repo
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "*.tar.xz"
+          token: ${{secrets.RELEASE_TOKEN}}
+          repo: "ktraister/endless_waltz_public"
