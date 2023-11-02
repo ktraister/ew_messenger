@@ -57,4 +57,4 @@ jobs:
         with:
           artifacts: "*.tar.xz"
           token: ${{secrets.RELEASE_TOKEN}}
-          repo: "ktraister/endless_waltz_public"
+          repo: endless_waltz_public
