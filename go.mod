@@ -6,8 +6,6 @@ require (
 	fyne.io/fyne/v2 v2.4.0
 	github.com/faiface/beep v1.1.0
 	github.com/gorilla/websocket v1.5.0
-	github.com/hajimehoshi/go-mp3 v0.3.4
-	github.com/hajimehoshi/oto v1.0.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.16.0
 )
@@ -26,6 +24,8 @@ require (
 	github.com/go-text/typesetting v0.0.0-20230616162802-9c17dd34aa4a // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
+	github.com/hajimehoshi/go-mp3 v0.3.4 // indirect
+	github.com/hajimehoshi/oto v1.0.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
