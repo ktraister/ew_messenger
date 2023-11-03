@@ -149,9 +149,27 @@ func dh_handshake(cm *ConnectionManager, logger *logrus.Logger, configuration Co
 	/*
 		I reaaaallllyyyyyy need to revisit the creation of the private key int
 		I understand the THEORY says that 2 <= int < Prime, but huge keys are slow
-		And do they even grant extra security? I really don't know.
 
-		Anyway, we'll be revisiting this part of the code many times.
+		https://www.rfc-editor.org/rfc/rfc4253#page-21
+		8.  Diffie-Hellman Key Exchange
+
+		   The Diffie-Hellman (DH) key exchange provides a shared secret that
+		   cannot be determined by either party alone.  The key exchange is
+		   combined with a signature with the host key to provide host
+		   authentication.  This key exchange method provides explicit server
+		   authentication as defined in Section 7.
+
+		   The following steps are used to exchange a key.  In this, C is the
+		   client; S is the server; p is a large safe prime; g is a generator
+		   for a subgroup of GF(p); q is the order of the subgroup; V_S is S's
+		   identification string; V_C is C's identification string; K_S is S's
+		   public host key; I_C is C's SSH_MSG_KEXINIT message and I_S is S's
+		   SSH_MSG_KEXINIT message that have been exchanged before this part
+		   begins.
+
+		   1. C generates a random number x (1 < x < q) and computes
+		      e = g^x mod p.  C sends e to S.
+
 	*/
 
 	//myint is private, int < p, int >= 2
