@@ -351,7 +351,7 @@ func main() {
 			hashString := hex.EncodeToString(hashSum)
 
 			//set values we just took in with login widget
-			configuration.User = username.Text
+			configuration.User = strings.ToLower(username.Text)
 			configuration.Passwd = hashString
 			logger.Debug(hashString)
 
