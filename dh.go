@@ -149,30 +149,11 @@ func dh_handshake(cm *ConnectionManager, logger *logrus.Logger, configuration Co
 	}
 
 	/*
-		https://www.rfc-editor.org/rfc/rfc4253#page-21
-		8.  Diffie-Hellman Key Exchange
-
-		   The Diffie-Hellman (DH) key exchange provides a shared secret that
-		   cannot be determined by either party alone.  The key exchange is
-		   combined with a signature with the host key to provide host
-		   authentication.  This key exchange method provides explicit server
-		   authentication as defined in Section 7.
-
-		   The following steps are used to exchange a key.  In this, C is the
-		   client; S is the server; p is a large safe prime; g is a generator
-		   for a subgroup of GF(p); q is the order of the subgroup; V_S is S's
-		   identification string; V_C is C's identification string; K_S is S's
-		   public host key; I_C is C's SSH_MSG_KEXINIT message and I_S is S's
-		   SSH_MSG_KEXINIT message that have been exchanged before this part
-		   begins.
-
-		   1. C generates a random number x (1 < x < q) and computes
-		      e = g^x mod p.  C sends e to S.
-
+           RSA is not quantum safe. This approach will need to be rethought. 
 	*/
 
 	//myint is private, low < int < high,
-	low, ok1 := big.NewInt(1).SetString("9", 0)
+	low, ok1 := big.NewInt(1).SetString("3", 0)
 	high, ok2 := big.NewInt(1).SetString("9999", 0)
 	if !ok1 || !ok2 {
 		logger.Error("Error generating private integer")
