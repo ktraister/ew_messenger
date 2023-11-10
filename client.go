@@ -159,10 +159,10 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 		return false
 	}
 	json.NewDecoder(resp.Body).Decode(&dat)
-	logger.Debug("got response from RandomAPI: ", dat)
+	//logger.Debug("got response from RandomAPI: ", dat)
 	raw_pad := fmt.Sprintf("%v", dat["Pad"])
 	cipherText := pad_encrypt(message.Msg, raw_pad, private_key)
-	logger.Debug(fmt.Sprintf("Ciphertext: %v\n", cipherText))
+	//logger.Debug(fmt.Sprintf("Ciphertext: %v\n", cipherText))
 
 	//send the ciphertext to the other user throught the websocket
 	outgoing := &Message{Type: "cipher",

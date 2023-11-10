@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -68,14 +69,15 @@ func fetchValues() (*big.Int, int) {
 	return mod, gen
 }
 
-func checkPrivKey(key string) bool {
+//privkey must satisfy 0 < privkey < p-1
+func checkPrivKey(key string, prime string) bool {
 	return true
 }
 
 func dh_handshake(cm *ConnectionManager, logger *logrus.Logger, configuration Configurations, conn_type string, targetUser string) (string, error) {
 	//setup required vars
 	localUser := fmt.Sprintf("%s_%s", configuration.User, conn_type)
-	prime := big.NewInt(424889)
+	prime := big.NewInt(1)
 	tempkey := big.NewInt(1)
 	var generator int
 	var err error
@@ -147,24 +149,26 @@ func dh_handshake(cm *ConnectionManager, logger *logrus.Logger, configuration Co
 	}
 
 	/*
-		I reaaaallllyyyyyy need to revisit the creation of the private key int
-		I understand the THEORY says that 2 <= int < Prime, but huge keys are slow
-		And do they even grant extra security? I really don't know.
-
-		Anyway, we'll be revisiting this part of the code many times.
+           RSA is not quantum safe. This approach will need to be rethought. 
 	*/
 
-	//myint is private, int < p, int >= 2
-	myint, err := rand.Int(rand.Reader, big.NewInt(9999))
-	logger.Debug(fmt.Sprintf("%s chose private int %s", conn_type, myint.String()))
+	//myint is private, low < int < high,
+	low, ok1 := big.NewInt(1).SetString("3", 0)
+	high, ok2 := big.NewInt(1).SetString("9999", 0)
+	if !ok1 || !ok2 {
+		logger.Error("Error generating private integer")
+		return "", errors.New("Privint gen error")
+	}
+
+	myint, err := rand.Int(rand.Reader, high)
 	if err != nil {
 		logger.Error(err)
 		return "", err
 	}
-	two := big.NewInt(2)
-	if myint.Cmp(two) <= 0 {
-		myint.Add(myint, big.NewInt(2))
+	if myint.Cmp(low) <= 0 {
+		myint.Add(myint, low)
 	}
+	logger.Debug(fmt.Sprintf("%s chose private int %s", conn_type, myint.String()))
 
 	//changing base to get some kind of speed boost or something
 	prime.Text(2)
@@ -262,10 +266,10 @@ func dh_handshake(cm *ConnectionManager, logger *logrus.Logger, configuration Co
 	}
 
 	tempkey.Exp(tempkey, myint, nil).Mod(tempkey, prime)
-	//tempkey.Mod(tempkey, prime)
 	privkey := tempkey.String()
 
-	if checkPrivKey(privkey) == false {
+	//privkey must satisfy 0 < privkey < p-1
+	if checkPrivKey(privkey, prime.String()) == false {
 		// bounce the conn
 		return "", fmt.Errorf("Connection bounced due to bad PrivKey")
 	}

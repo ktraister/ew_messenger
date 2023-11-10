@@ -126,7 +126,7 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 		return
 	}
 
-	logger.Debug("Incoming msg: ", dat["msg"].(string))
+	//logger.Debug("Incoming msg: ", dat["msg"].(string))
 
 	incomingMsg := Post{User: dat["user"].(string), Msg: pad_decrypt(dat["msg"].(string), pad, private_key), ok: true}
 	incomingMsgChan <- incomingMsg

@@ -173,7 +173,8 @@ func refreshUsers(logger *logrus.Logger, configuration Configurations, container
 		users, _ = getExUsers(logger, configuration)
 		logger.Debug("refreshUsers --> ", users)
 		container.Refresh()
-		time.Sleep(5 * time.Second)
+		//refresh rate
+		time.Sleep(1 * time.Second)
 	}
 }
 
