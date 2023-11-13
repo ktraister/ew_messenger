@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"encoding/base64"
 	"strings"
 	"time"
 	"go.dedis.ch/kyber/v3/group/edwards25519"
@@ -115,7 +116,12 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
         suite := edwards25519.NewBlakeSHA256Ed25519()
 	//qPubKey := heloMsg[1]
 	qPubKey := suite.Point()
-	err = qPubKey.UnmarshalBinary([]byte(heloMsg[1]))
+	decodedBytes, err := base64.StdEncoding.DecodeString(heloMsg[1])
+	if err != nil {
+		fmt.Println("Error decoding base64:", err)
+		return false
+	}
+	err = qPubKey.UnmarshalBinary(decodedBytes)
 	if err != nil {
 		logger.Error(fmt.Sprintf("PubKey Marshall Error: %d", err))
 		return false

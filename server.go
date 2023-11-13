@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"strings"
 	"time"
+	"encoding/base64"
 
 	"github.com/sirupsen/logrus"
 	"go.dedis.ch/kyber/v3/group/edwards25519"
@@ -41,6 +42,13 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
         suite := edwards25519.NewBlakeSHA256Ed25519()
 	qPrivKey := suite.Scalar().Pick(random.New())
 	qPubKey := suite.Point().Mul(qPrivKey, nil)
+	qPubKeyData, err := qPubKey.MarshalBinary()
+	if err != nil {
+		logger.Error(err)
+		return
+	}
+	// Encode byte slice as base64
+	qPubKeyStr := base64.StdEncoding.EncodeToString(qPubKeyData)
 	localUser := fmt.Sprintf("%s_server-%s", configuration.User, uid())
 	targetUser := dat["from"].(string)
 	cm, err := exConnect(logger, configuration, localUser)
@@ -55,7 +63,7 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 		User: configuration.User,
 		From: localUser,
 		To:   targetUser,
-		Msg:  fmt.Sprintf("HELO_REPLY:%s", qPubKey),
+		Msg:  fmt.Sprintf("HELO_REPLY:%s", qPubKeyStr),
 	}
 	b, err := json.Marshal(helo)
 	if err != nil {
@@ -84,9 +92,10 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 	}
 
         //plainText, err := decrypt(dat["msg"].(string), private_key)
-	plainText, err := ecies.Decrypt(suite, qPrivKey, dat["msg"].([]byte), suite.Hash)
+	cipherText := []byte(dat["msg"].(string))
+	plainText, err := ecies.Decrypt(suite, qPrivKey, cipherText, suite.Hash)
         if err != nil {     
-                logger.Error(fmt.Sprintf("Ciphertext Error: %d", err))
+                logger.Error(fmt.Sprintf("Ciphertext Error: %s", err))
                 return
         } 
 

@@ -22,7 +22,7 @@ func fetchConfig() Configurations {
 	defaultConfig := Configurations{
 		RandomURL:   "https://api.endlesswaltz.xyz:443/api/otp",
 		ExchangeURL: "wss://exchange.endlesswaltz.xyz:443/ws",
-		LogLevel:    "Error",
+		LogLevel:    "Debug",
 	}
 
 	currentUser, err := user.Current()
