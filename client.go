@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"net/http"
 	"strings"
 	"time"
+	"go.dedis.ch/kyber/v3/group/edwards25519"
+        "go.dedis.ch/kyber/v3/encrypt/ecies"        
 )
 
 type Post struct {
@@ -39,19 +39,18 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	}
 	defer cm.Close()
 	passwd := configuration.Passwd
-	random := configuration.RandomURL
 
 	targetUser := fmt.Sprintf("%s_%s", string(message.User), "server")
 
 	logger.Debug(fmt.Sprintf("Sending msg %s from user %s to user %s!!", message.Msg, user, targetUser))
 
 	if len(message.Msg) > 4096 {
-		logger.Fatal("We dont support this yet!")
+		logger.Error("We dont support this")
 		return false
 	}
 
 	if passwd == "" || user == "" {
-		logger.Fatal("authorized Creds are required")
+		logger.Error("authorized Creds are required")
 		return false
 	}
 
@@ -98,78 +97,42 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	}
 
 	heloUser := strings.Split(dat["from"].(string), "-")[0]
-	if dat["msg"] == "HELO" &&
+	heloMsg := strings.Split(dat["msg"].(string), ":")
+	if heloMsg[0] == "HELO_REPLY" &&
 		heloUser == targetUser {
 		logger.Debug("Client received HELO from ", heloUser)
 	} else {
-		logger.Error(fmt.Sprintf("Didn't receive HELO from %s in time, try again later", targetUser))
+		logger.Error(fmt.Sprintf("Didn't receive HELO_REPLY from %s in time, try again later", targetUser))
 		return false
 	}
 
-	logger.Debug(fmt.Sprintf("Upgrading remote conn user from %s to %s", targetUser, dat["from"].(string)))
+	logger.Debug(fmt.Sprintf("shifting remote conn user from %s to %s", targetUser, dat["from"].(string)))
 	targetUser = dat["from"].(string)
 
 	//reset conn read deadline
 	cm.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 
-	//perform DH handshake with the other user
-	private_key, err := dh_handshake(cm, logger, configuration, "client", targetUser)
+        suite := edwards25519.NewBlakeSHA256Ed25519()
+	//qPubKey := heloMsg[1]
+	qPubKey := suite.Point()
+	err = qPubKey.UnmarshalBinary([]byte(heloMsg[1]))
 	if err != nil {
-		logger.Fatal("Private Key Error!")
+		logger.Error(fmt.Sprintf("PubKey Marshall Error: %d", err))
 		return false
 	}
 
-	logger.Info("Private DH Key: ", private_key)
-
-	//read in response from server
-	_, incoming, err = cm.Read()
+	cipherText, err := ecies.Encrypt(suite, qPubKey, []byte(message.Msg), suite.Hash)
 	if err != nil {
-		logger.Error("Error reading message:", err)
+		logger.Error(fmt.Sprintf("Ciphertext Error: %d", err))
 		return false
 	}
-
-	err = json.Unmarshal([]byte(incoming), &dat)
-	if err != nil {
-		logger.Error("Error unmarshalling json:", err)
-		return false
-	}
-
-	logger.Debug(fmt.Sprintf("got response from server %s", dat["msg"]))
-
-	//this will all have to stay the same -- we get the UUID from the "server" above
-	//reach out to server and request Pad
-	data := Random_Req{
-		Host: "client",
-		UUID: fmt.Sprintf("%v", dat["msg"]),
-	}
-	rapi_data, _ := json.Marshal(data)
-	req, err := http.NewRequest("POST", random, bytes.NewBuffer(rapi_data))
-	if err != nil {
-		logger.Error(err)
-		return false
-	}
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", configuration.User)
-	req.Header.Set("Passwd", passwd)
-	ts := tlsClient(configuration.RandomURL)
-	client := &http.Client{Timeout: 10 * time.Second, Transport: ts}
-	resp, err := client.Do(req)
-	if err != nil {
-		logger.Error(err)
-		return false
-	}
-	json.NewDecoder(resp.Body).Decode(&dat)
-	//logger.Debug("got response from RandomAPI: ", dat)
-	raw_pad := fmt.Sprintf("%v", dat["Pad"])
-	cipherText := pad_encrypt(message.Msg, raw_pad, private_key)
-	//logger.Debug(fmt.Sprintf("Ciphertext: %v\n", cipherText))
 
 	//send the ciphertext to the other user throught the websocket
 	outgoing := &Message{Type: "cipher",
 		User: configuration.User,
 		From: user,
 		To:   targetUser,
-		Msg:  cipherText,
+		Msg:  string(cipherText),
 	}
 	b, err = json.Marshal(outgoing)
 	if err != nil {
