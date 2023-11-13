@@ -8,7 +8,6 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.17.0
-	github.com/symbolicsoft/kyber-k2so v0.2.0
 	go.dedis.ch/kyber/v3 v3.1.0
 )
 
