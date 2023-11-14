@@ -2,9 +2,9 @@ package main
 
 import (
 	"embed"
-	"log"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
@@ -13,15 +13,15 @@ import (
 //go:embed audio
 var content embed.FS
 
-func playSound() {
+func playSound(logger *logrus.Logger) {
 	f, err := content.Open("audio/warning_beep.mp3")
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 	}
 
 	streamer, format, err := mp3.Decode(f)
 	if err != nil {
-		log.Error(err)
+		logger.Error(err)
 	}
 	defer streamer.Close()
 
