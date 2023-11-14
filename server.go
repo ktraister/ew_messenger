@@ -1,15 +1,17 @@
 package main
 
 import (
-	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"go.dedis.ch/kyber/v3/encrypt/ecies"
+	"go.dedis.ch/kyber/v3/group/edwards25519"
+	"go.dedis.ch/kyber/v3/util/random"
 )
 
 type Client_Resp struct {
@@ -36,6 +38,24 @@ func uid() string {
 // Change handleConnection to act as the "server side" in this transaction
 // we'll pass around the websocket to accomplish this
 func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configuration Configurations) {
+	//the entire connection will be encrypted using a single kyber key per conn
+	suite := edwards25519.NewBlakeSHA256Ed25519()
+	//pretty sure I saw another way to generate these keys
+	qPrivKey := suite.Scalar().Pick(random.New())
+	qPubKey := suite.Point().Mul(qPrivKey, nil)
+	qPubKeyData, err := qPubKey.MarshalBinary()
+	if err != nil {
+		logger.Error(err)
+		return
+	}
+
+	//debug
+	logger.Debug("qPubKey data: ", qPubKeyData)
+	logger.Debug(fmt.Printf("Private key: %s\n", qPrivKey))
+	logger.Debug(fmt.Printf("Public key: %s\n", qPubKey))
+
+	// Encode byte slice as base64
+	qPubKeyStr := base64.StdEncoding.EncodeToString(qPubKeyData)
 	localUser := fmt.Sprintf("%s_server-%s", configuration.User, uid())
 	targetUser := dat["from"].(string)
 	cm, err := exConnect(logger, configuration, localUser)
@@ -44,13 +64,14 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 		return
 	}
 	logger.Debug("Connected to exchange with user ", localUser)
+	logger.Debug("sending base64 pubkey ", qPubKeyStr)
 
 	//we need to respond with a HELO here
-	helo := &Message{Type: "helo",
+	helo := &Message{Type: "helo_reply",
 		User: configuration.User,
 		From: localUser,
 		To:   targetUser,
-		Msg:  "HELO",
+		Msg:  qPubKeyStr,
 	}
 	b, err := json.Marshal(helo)
 	if err != nil {
@@ -63,55 +84,7 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 		logger.Error("Server:Unable to write message to websocket: ", err)
 		return
 	}
-	logger.Debug("Responded with HELO to ", targetUser)
-
-	private_key, err := dh_handshake(cm, logger, configuration, "server", targetUser)
-	if err != nil {
-		logger.Error("Private Key Error!")
-		return
-	}
-	logger.Debug("Private DH Key: ", private_key)
-
-	//reach out to the api and get our key and pad
-	data := []byte(`{"Host": "server"}`)
-
-	//reach out and get random pad and UUID
-	req, err := http.NewRequest("POST", configuration.RandomURL, bytes.NewBuffer(data))
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", configuration.User)
-	req.Header.Set("Passwd", configuration.Passwd)
-	ts := tlsClient(configuration.RandomURL)
-	client := &http.Client{Timeout: 10 * time.Second, Transport: ts}
-	resp, error := client.Do(req)
-	if error != nil {
-		logger.Error(error)
-		return
-	}
-	var res map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&res)
-	pad := fmt.Sprintf("%v", res["Pad"])
-	logger.Debug("UUID: ", res["UUID"])
-
-	//send off the UUID to the client
-	outgoing := &Message{Type: "UUID",
-		User: configuration.User,
-		From: configuration.User,
-		To:   targetUser,
-		Msg:  res["UUID"].(string),
-	}
-	b, err = json.Marshal(outgoing)
-	if err != nil {
-		logger.Error(err)
-		return
-	}
-
-	err = cm.Send(b)
-	if err != nil {
-		logger.Error("Unable to write message to websocket: ", err)
-		return
-	}
-
-	logger.Debug("We've just sent off the UUID to client...")
+	logger.Debug("Responded with HELO_REPLY to ", targetUser)
 
 	//receive the encrypted text
 	_, incoming, err := cm.Read()
@@ -126,9 +99,21 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 		return
 	}
 
-	//logger.Debug("Incoming msg: ", dat["msg"].(string))
+        logger.Debug("got base64 cipherText ", dat["msg"].(string))
+        decodedBytes, err := base64.StdEncoding.DecodeString(dat["msg"].(string))
+        if err != nil {                      
+                fmt.Println("Error decoding base64:", err)
+                return 
+        } 
+	logger.Debug("decrypting cipherText ", decodedBytes)
+	plainText, err := ecies.Decrypt(suite, qPrivKey, decodedBytes, suite.Hash)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Ciphertext Error: %s", err))
+		return
+	}
 
-	incomingMsg := Post{User: dat["user"].(string), Msg: pad_decrypt(dat["msg"].(string), pad, private_key), ok: true}
+	//logger.Debug("Incoming msg: ", dat["msg"].(string))
+	incomingMsg := Post{User: dat["user"].(string), Msg: string(plainText), ok: true}
 	incomingMsgChan <- incomingMsg
-	playSound()
+	playSound(logger)
 }

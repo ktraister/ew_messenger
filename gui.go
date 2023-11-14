@@ -88,7 +88,7 @@ func messageStashed(user string) bool {
 	return false
 }
 
-//this thread should just read HELO and pass off to another thread
+// this thread should just read HELO and pass off to another thread
 func listen(logger *logrus.Logger, configuration Configurations) {
 	localUser := fmt.Sprintf("%s_%s", configuration.User, "server")
 	cm, err := exConnect(logger, configuration, localUser)
@@ -123,7 +123,7 @@ func listen(logger *logrus.Logger, configuration Configurations) {
 	}
 }
 
-//send needs to be a wrapper thread for go functions
+// send needs to be a wrapper thread for go functions
 func send(logger *logrus.Logger, configuration Configurations, sendButton *widget.Button, progressBar *widget.ProgressBarInfinite, textBox *widget.Entry) {
 	for {
 		message := <-outgoingMsgChan
@@ -171,7 +171,7 @@ func refreshUsers(logger *logrus.Logger, configuration Configurations, container
 	for {
 		users = []string{}
 		users, _ = getExUsers(logger, configuration)
-		logger.Debug("refreshUsers --> ", users)
+		//logger.Debug("refreshUsers --> ", users)
 		container.Refresh()
 		//refresh rate
 		time.Sleep(1 * time.Second)
