@@ -16,12 +16,12 @@ var content embed.FS
 func playSound() {
 	f, err := content.Open("audio/warning_beep.mp3")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 
 	streamer, format, err := mp3.Decode(f)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
 	}
 	defer streamer.Close()
 

@@ -65,7 +65,7 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 	// Parse the WebSocket URL
 	u, err := url.Parse(configuration.ExchangeURL)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Error(err)
 		return &ConnectionManager{}, err
 	}
 
@@ -77,7 +77,7 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 	// Establish a WebSocket connection
 	conn, _, err := dialer.Dial(u.String(), http.Header{"Passwd": []string{configuration.Passwd}, "User": []string{user}})
 	if err != nil {
-		logger.Fatal(fmt.Sprintf("Could not establish WebSocket connection with %s: %s", u.String(), err))
+		logger.Error(fmt.Sprintf("Could not establish WebSocket connection with %s: %s", u.String(), err))
 		return &ConnectionManager{}, err
 	}
 	logger.Debug("Connected to exchange server!")
@@ -90,12 +90,12 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 	message := &Message{Type: "startup", User: user}
 	b, err := json.Marshal(message)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Error(err)
 		return &ConnectionManager{}, err
 	}
 	err = connectionManager.Send(b)
 	if err != nil {
-		logger.Fatal(err)
+		logger.Error(err)
 		return &ConnectionManager{}, err
 	}
 

@@ -71,7 +71,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 
 	err = cm.Send(b)
 	if err != nil {
-		logger.Fatal("Client:Unable to write message to websocket: ", err)
+		logger.Error("Client:Unable to write message to websocket: ", err)
 		return false
 	}
 	logger.Debug("Client:Sent init HELO")
