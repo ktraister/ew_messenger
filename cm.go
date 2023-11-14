@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-//start CM
+// start CM
 type ConnectionManager struct {
 	conn     *websocket.Conn
 	mu       sync.Mutex

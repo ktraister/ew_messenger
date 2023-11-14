@@ -1,16 +1,16 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"strings"
 	"time"
-	"encoding/base64"
 
 	"github.com/sirupsen/logrus"
-	"go.dedis.ch/kyber/v3/group/edwards25519"
 	"go.dedis.ch/kyber/v3/encrypt/ecies"
+	"go.dedis.ch/kyber/v3/group/edwards25519"
 	"go.dedis.ch/kyber/v3/util/random"
 )
 
@@ -39,7 +39,8 @@ func uid() string {
 // we'll pass around the websocket to accomplish this
 func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configuration Configurations) {
 	//the entire connection will be encrypted using a single kyber key per conn
-        suite := edwards25519.NewBlakeSHA256Ed25519()
+	suite := edwards25519.NewBlakeSHA256Ed25519()
+	//pretty sure I saw another way to generate these keys
 	qPrivKey := suite.Scalar().Pick(random.New())
 	qPubKey := suite.Point().Mul(qPrivKey, nil)
 	qPubKeyData, err := qPubKey.MarshalBinary()
@@ -47,6 +48,12 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 		logger.Error(err)
 		return
 	}
+
+	//debug
+	logger.Debug("qPubKey data: '%d'", qPubKeyData)
+	logger.Debug(fmt.Printf("Private key: %s\n", qPrivKey))
+	logger.Debug(fmt.Printf("Public key: %s\n", qPubKey))
+
 	// Encode byte slice as base64
 	qPubKeyStr := base64.StdEncoding.EncodeToString(qPubKeyData)
 	localUser := fmt.Sprintf("%s_server-%s", configuration.User, uid())
@@ -57,13 +64,14 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 		return
 	}
 	logger.Debug("Connected to exchange with user ", localUser)
+	logger.Debug("sending base64 pubkey ", qPubKeyStr)
 
 	//we need to respond with a HELO here
 	helo := &Message{Type: "helo_reply",
 		User: configuration.User,
 		From: localUser,
 		To:   targetUser,
-		Msg:  fmt.Sprintf("HELO_REPLY:%s", qPubKeyStr),
+		Msg:  qPubKeyStr,
 	}
 	b, err := json.Marshal(helo)
 	if err != nil {
@@ -91,13 +99,18 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 		return
 	}
 
-        //plainText, err := decrypt(dat["msg"].(string), private_key)
-	cipherText := []byte(dat["msg"].(string))
-	plainText, err := ecies.Decrypt(suite, qPrivKey, cipherText, suite.Hash)
-        if err != nil {     
-                logger.Error(fmt.Sprintf("Ciphertext Error: %s", err))
-                return
+        logger.Debug("got base64 cipherText ", dat["msg"].(string))
+        decodedBytes, err := base64.StdEncoding.DecodeString(dat["msg"].(string))
+        if err != nil {                      
+                fmt.Println("Error decoding base64:", err)
+                return 
         } 
+	logger.Debug("decrypting cipherText ", decodedBytes)
+	plainText, err := ecies.Decrypt(suite, qPrivKey, decodedBytes, suite.Hash)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Ciphertext Error: %s", err))
+		return
+	}
 
 	//logger.Debug("Incoming msg: ", dat["msg"].(string))
 	incomingMsg := Post{User: dat["user"].(string), Msg: string(plainText), ok: true}

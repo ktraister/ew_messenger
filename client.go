@@ -1,14 +1,14 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"encoding/base64"
+	"go.dedis.ch/kyber/v3/encrypt/ecies"
+	"go.dedis.ch/kyber/v3/group/edwards25519"
 	"strings"
 	"time"
-	"go.dedis.ch/kyber/v3/group/edwards25519"
-        "go.dedis.ch/kyber/v3/encrypt/ecies"        
 )
 
 type Post struct {
@@ -98,8 +98,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	}
 
 	heloUser := strings.Split(dat["from"].(string), "-")[0]
-	heloMsg := strings.Split(dat["msg"].(string), ":")
-	if heloMsg[0] == "HELO_REPLY" &&
+	if dat["type"].(string) == "helo_reply" &&
 		heloUser == targetUser {
 		logger.Debug("Client received HELO from ", heloUser)
 	} else {
@@ -113,32 +112,36 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	//reset conn read deadline
 	cm.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 
-        suite := edwards25519.NewBlakeSHA256Ed25519()
-	//qPubKey := heloMsg[1]
+	suite := edwards25519.NewBlakeSHA256Ed25519()
 	qPubKey := suite.Point()
-	decodedBytes, err := base64.StdEncoding.DecodeString(heloMsg[1])
+	logger.Debug("got base64 pubkey ", dat["msg"].(string))
+	decodedBytes, err := base64.StdEncoding.DecodeString(dat["msg"].(string))
 	if err != nil {
 		fmt.Println("Error decoding base64:", err)
 		return false
 	}
+        logger.Debug("qPubKey data: '%d'", decodedBytes)
 	err = qPubKey.UnmarshalBinary(decodedBytes)
 	if err != nil {
 		logger.Error(fmt.Sprintf("PubKey Marshall Error: %d", err))
 		return false
 	}
 
+	logger.Debug("qPubKey before encrypt: ", qPubKey)
 	cipherText, err := ecies.Encrypt(suite, qPubKey, []byte(message.Msg), suite.Hash)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Ciphertext Error: %d", err))
 		return false
 	}
 
+	cipherTextStr := base64.StdEncoding.EncodeToString(cipherText)
+	logger.Debug("sending cipherText: ", cipherTextStr)
 	//send the ciphertext to the other user throught the websocket
 	outgoing := &Message{Type: "cipher",
 		User: configuration.User,
 		From: user,
 		To:   targetUser,
-		Msg:  string(cipherText),
+		Msg:  string(cipherTextStr),
 	}
 	b, err = json.Marshal(outgoing)
 	if err != nil {
