@@ -50,7 +50,7 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 	}
 
 	//debug
-	logger.Debug("qPubKey data: '%d'", qPubKeyData)
+	logger.Debug("qPubKey data: ", qPubKeyData)
 	logger.Debug(fmt.Printf("Private key: %s\n", qPrivKey))
 	logger.Debug(fmt.Printf("Public key: %s\n", qPubKey))
 
