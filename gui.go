@@ -318,6 +318,14 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 }
 
 func afterLogin(logger *logrus.Logger, configuration Configurations, myApp fyne.App, loginWindow fyne.Window) {
+        //check if we need to implement the proxy
+        if proxyCheck() {
+                configuration.RandomURL = "https://localhost:9090/api/otp"
+                configuration.ExchangeURL = "wss://localhost:9090/ws"
+		logger.Error("starting proxy thread")
+		go proxy(configuration, logger)
+        }
+
 	//myApp.Preferences().SetString("AppTimeout", string(time.Minute))
 	myWindow := myApp.NewWindow("EW Messenger")
 	myWindow.SetMaster()

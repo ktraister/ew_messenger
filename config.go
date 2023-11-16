@@ -25,6 +25,7 @@ func fetchConfig() Configurations {
 		LogLevel:    "Error",
 	}
 
+	//Config file override code
 	currentUser, err := user.Current()
 	if err != nil {
 		fmt.Println("Unable to get current user: ", err)
