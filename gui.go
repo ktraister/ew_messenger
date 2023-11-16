@@ -295,6 +295,12 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 	myText := widget.NewLabelWithStyle("Logged in as: "+configuration.User, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	myText.Importance = widget.WarningImportance
 
+	//create interactive proxy button
+	proxyButton := widget.NewButton("Proxy", func() {
+		logger.Error("tapped")
+		self.Importance = widget.HighImportance
+	})
+
 	// Create a container for the message entry container, clear button widget and send button container
 	sendContainer := container.NewBorder(clearButton, buttonContainer, nil, nil, messageEntry)
 
@@ -302,8 +308,10 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 	splitContainer := container.NewVSplit(scrollContainer, sendContainer)
 	splitContainer.Offset = .7
 	//Create borders for buttons
+	topContainer := container.NewHSplit(myText, proxyButton)
+	topContainer.Offset = .75
 	finalContainer := container.NewBorder(topLine, nil, onlineContainer, nil, splitContainer)
-	finalContainer = container.NewBorder(myText, nil, nil, nil, finalContainer)
+	finalContainer = container.NewBorder(topContainer, nil, nil, nil, finalContainer)
 
 	//replace button in buttonContainer with progressBar when firing message
 	//https://developer.fyne.io/widget/progressbar
