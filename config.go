@@ -26,7 +26,7 @@ func fetchConfig() Configurations {
 		RandomURL:   "https://api.endlesswaltz.xyz:443/api/otp",
 		ExchangeURL: "wss://exchange.endlesswaltz.xyz:443/ws",
 		SSHHost:     "endlesswaltz.xyz",
-		LogLevel:    "Debug",
+		LogLevel:    "Error",
 	}
 
 	configuredRandomURL = defaultConfig.RandomURL
