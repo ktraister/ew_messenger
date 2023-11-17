@@ -99,20 +99,20 @@ func proxyMgr(logger *logrus.Logger, pStatus *widget.Label) {
 		prxy := "default"
 		//manage the indicator text/color
 		switch pStatus.Text {
-		case "Proxy":
+		case "Proxy Off":
 			pStatus.Text = "Starting Proxy..."
-			pStatus.Importance = widget.WarningImportance
+			pStatus.Importance = widget.MediumImportance
 			prxy = "up"
 		case "Proxy Up!":
 			pStatus.Text = "Stopping Proxy..."
-			pStatus.Importance = widget.WarningImportance
+			pStatus.Importance = widget.MediumImportance
 			prxy = "down"
 		case "Starting Proxy...":
 			pStatus.Text = "Stopping Proxy..."
-			pStatus.Importance = widget.WarningImportance
+			pStatus.Importance = widget.MediumImportance
 			prxy = "down"
 		default:
-			pStatus.Text = "Proxy"
+			pStatus.Text = "Proxy Off"
 			pStatus.Importance = widget.LowImportance
 		}
 		pStatus.Refresh()
@@ -341,7 +341,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	textContainer := container.New(layout.NewCenterLayout(), myText)
 
 	//create proxy status widget
-	pStatus := widget.NewLabelWithStyle("Proxy", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	pStatus := widget.NewLabelWithStyle("Proxy Off", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	pStatus.Importance = widget.LowImportance
 
 	//create interactive proxy button
