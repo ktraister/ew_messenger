@@ -28,7 +28,7 @@ func proxyFail(pStatus *widget.Label) {
 func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.Label) {
 	logger.Info("Init proxy thread")
 	// hard-coding proxy vars, but ingesting creds
-	sshServer := "localhost"
+	sshServer := configuration.SSHHost
 	sshPort := 2222
 	sshUser := configuration.User
 	sshPassword := configuration.Passwd
@@ -66,7 +66,7 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 
 	logger.Info(fmt.Sprintf("Local port forwarding started on port %d...", localPort))
 	pStatus.Text = "Proxy Up!"
-	pStatus.Importance = widget.MediumImportance
+	pStatus.Importance = widget.HighImportance
 	pStatus.Refresh()
 
 	// Accept incoming connections on local port

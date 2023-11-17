@@ -11,6 +11,7 @@ import (
 type Configurations struct {
 	RandomURL   string
 	ExchangeURL string
+	SSHHost     string
 	LogLevel    string
 	User        string
 	Passwd      string
@@ -24,7 +25,8 @@ func fetchConfig() Configurations {
 	defaultConfig := Configurations{
 		RandomURL:   "https://api.endlesswaltz.xyz:443/api/otp",
 		ExchangeURL: "wss://exchange.endlesswaltz.xyz:443/ws",
-		LogLevel:    "Error",
+		SSHHost:     "endlesswaltz.xyz",
+		LogLevel:    "Debug",
 	}
 
 	configuredRandomURL = defaultConfig.RandomURL

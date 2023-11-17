@@ -101,15 +101,15 @@ func proxyMgr(logger *logrus.Logger, pStatus *widget.Label) {
 		switch pStatus.Text {
 		case "Proxy":
 			pStatus.Text = "Starting Proxy..."
-			pStatus.Importance = widget.HighImportance
+			pStatus.Importance = widget.WarningImportance
 			prxy = "up"
 		case "Proxy Up!":
 			pStatus.Text = "Stopping Proxy..."
-			pStatus.Importance = widget.HighImportance
+			pStatus.Importance = widget.WarningImportance
 			prxy = "down"
 		case "Starting Proxy...":
 			pStatus.Text = "Stopping Proxy..."
-			pStatus.Importance = widget.HighImportance
+			pStatus.Importance = widget.WarningImportance
 			prxy = "down"
 		default:
 			pStatus.Text = "Proxy"
@@ -338,6 +338,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	//create the widget to display current user
 	myText := widget.NewLabelWithStyle("Logged in as: "+globalConfig.User, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	myText.Importance = widget.WarningImportance
+	textContainer := container.New(layout.NewCenterLayout(), myText)
 
 	//create proxy status widget
 	pStatus := widget.NewLabelWithStyle("Proxy", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
@@ -350,19 +351,15 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	})
 
 	//create container to hold current user/proxy button
-	space := widget.NewLabelWithStyle("                  ", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	topContainer := container.NewHBox()
 	sideLine3 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
 	sideLine3.StrokeWidth = 5
 	sideLine4 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
 	sideLine4.StrokeWidth = 2
-	topContainer = container.NewBorder(nil, nil, myText, sideLine3, nil)
+	topContainer = container.NewBorder(nil, nil, nil, sideLine3, textContainer)
 	topContainer = container.NewBorder(nil, nil, nil, pStatus, topContainer)
 	topContainer = container.NewBorder(nil, nil, nil, sideLine4, topContainer)
 	topContainer = container.NewBorder(nil, nil, nil, proxyButton, topContainer)
-	topContainer = container.NewBorder(nil, nil, space, nil, topContainer)
-	//topContainer.Offset = .75
-	//topContainer.Add(proxyButton)
 
 	// Create a container for the message entry container, clear button widget and send button container
 	sendContainer := container.NewBorder(clearButton, buttonContainer, nil, nil, messageEntry)
@@ -403,6 +400,7 @@ func main() {
 	logger.Debug("Reading variables using the model..")
 	logger.Debug("randomURL is\t\t", globalConfig.RandomURL)
 	logger.Debug("exchangeURL is\t", globalConfig.ExchangeURL)
+	logger.Debug("sshHost is\t\t", globalConfig.SSHHost)
 
 	//add "starting up" message while loading
 	myApp := app.NewWithID("EW Messenger")
