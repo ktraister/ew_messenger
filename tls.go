@@ -7,11 +7,11 @@ import (
 )
 
 /*
-I want an interactive button. That will require that connections get bounced 
+I want an interactive button. That will require that connections get bounced
 
 */
 
-//these two spots are where we'll setup the proxy rewrite (if required)
+// these two spots are where we'll setup the proxy rewrite (if required)
 func tlsClient(input string) *http.Transport {
 	ts := &http.Transport{
 		TLSClientConfig: &tls.Config{},

@@ -4,10 +4,10 @@ import (
 	"embed"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/faiface/beep"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
+	"github.com/sirupsen/logrus"
 )
 
 //go:embed audio

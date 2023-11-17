@@ -2,20 +2,31 @@ package main
 
 import (
 	"fmt"
+	"fyne.io/fyne/v2/widget"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"net"
-	"github.com/sirupsen/logrus"
 )
 
-//if true proxy
+var quit = make(chan bool)
+
+// if true proxy
 func proxyCheck() bool {
-    //fmt.Println("returning proxy true") 
-    return false
+	//fmt.Println("returning proxy true")
+	return false
 }
 
-func proxy(configuration Configurations, logger *logrus.Logger) {
-        logger.Info("Init proxy thread")
+func proxyFail(pStatus *widget.Label) {
+	pStatus.Text = "Proxy Error"
+	pStatus.Importance = widget.DangerImportance
+        pStatus.Refresh()
+	globalConfig.RandomURL = configuredRandomURL
+	globalConfig.ExchangeURL = configuredExchangeURL
+}
+
+func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.Label) {
+	logger.Info("Init proxy thread")
 	// hard-coding proxy vars, but ingesting creds
 	sshServer := "localhost"
 	sshPort := 2222
@@ -23,7 +34,6 @@ func proxy(configuration Configurations, logger *logrus.Logger) {
 	sshPassword := configuration.Passwd
 	localPort := 9090
 	remoteAddress := "localhost:443"
-        logger.Info("read in configuration")
 
 	// Create an SSH client configuration
 	config := &ssh.ClientConfig{
@@ -33,45 +43,58 @@ func proxy(configuration Configurations, logger *logrus.Logger) {
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Insecure; use proper verification in production
 	}
-        logger.Info("created SSH connection config")
+	logger.Info("created SSH connection config")
 
 	// Establish SSH connection
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", sshServer, sshPort), config)
 	if err != nil {
 		logger.Error("Failed to dial:", err)
+		proxyFail(pStatus)
 		return
 	}
 	//defer client.Close()
-        logger.Info("established SSH connetion")
+	logger.Info("established SSH connetion")
 
 	// Establish local listener
 	localListener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", localPort))
 	if err != nil {
 		logger.Error("Failed to listen on local port:", err)
+		proxyFail(pStatus)
 		return
 	}
 	defer localListener.Close()
 
-	logger.Info("Local port forwarding started on port %d...\n", localPort)
+	logger.Info(fmt.Sprintf("Local port forwarding started on port %d...", localPort))
+	pStatus.Text = "Proxy Up!"
+	pStatus.Importance = widget.MediumImportance
+	pStatus.Refresh()
 
 	// Accept incoming connections on local port
 	for {
-		localConn, err := localListener.Accept()
-		if err != nil {
-			logger.Error("Failed to accept incoming connection:", err)
+		select {
+		case <-quit:
+			proxyMsgChan <- ""
 			return
-		}
+		default:
+			localConn, err := localListener.Accept()
+			if err != nil {
+				logger.Error("Failed to accept incoming connection:", err)
+				proxyFail(pStatus)
+				return
+			}
 
-		// Connect to the remote address
-		remoteConn, err := client.Dial("tcp", remoteAddress)
-		if err != nil {
-			logger.Error("Failed to dial remote address:", err)
-			return
-		}
+			// Connect to the remote address
+			remoteConn, err := client.Dial("tcp", remoteAddress)
+			if err != nil {
+				logger.Error("Failed to dial remote address:", err)
+				proxyFail(pStatus)
+				return
+			}
 
-		// Handle data forwarding in both directions
-		go forward(localConn, remoteConn, logger)
-		go forward(remoteConn, localConn, logger)
+			// Handle data forwarding in both directions
+			go forward(localConn, remoteConn, logger)
+			go forward(remoteConn, localConn, logger)
+		}
 	}
 }
 
