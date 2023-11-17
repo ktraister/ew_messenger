@@ -20,7 +20,7 @@ func proxyCheck() bool {
 func proxyFail(pStatus *widget.Label) {
 	pStatus.Text = "Proxy Error"
 	pStatus.Importance = widget.DangerImportance
-        pStatus.Refresh()
+	pStatus.Refresh()
 	globalConfig.RandomURL = configuredRandomURL
 	globalConfig.ExchangeURL = configuredExchangeURL
 }

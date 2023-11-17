@@ -122,13 +122,13 @@ func proxyMgr(logger *logrus.Logger, pStatus *widget.Label) {
 			globalConfig.RandomURL = "https://localhost:9090/api/otp"
 			globalConfig.ExchangeURL = "wss://localhost:9090/ws"
 			go proxy(globalConfig, logger, pStatus)
-		        logger.Debug("proxy Up")
+			logger.Debug("proxy Up")
 		} else if prxy == "down" {
 			quit <- true
 			globalConfig.RandomURL = configuredRandomURL
 			globalConfig.ExchangeURL = configuredExchangeURL
-		        logger.Debug("proxy Down")
-		} 
+			logger.Debug("proxy Down")
+		}
 	}
 }
 
