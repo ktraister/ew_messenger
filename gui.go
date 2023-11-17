@@ -28,6 +28,9 @@ import (
 var users = []string{}
 var targetUser = ""
 var stashedMessages = []Post{}
+var proxyMsgChan = make(chan string)
+//use configChan to pass new config to threads -- update running thread config w/o restart
+var configChan = make(chan Configurations)
 
 func checkCreds(configuration Configurations) (bool, string) {
 	//setup tls
@@ -86,6 +89,35 @@ func messageStashed(user string) bool {
 		}
 	}
 	return false
+}
+
+// this thread manages proxy status and symbols
+func proxyMgr(logger *logrus.Logger, configuration Configurations, pStatus *widget.Label) {
+        for {
+	    //we don't care what it says, just that it was added
+	    _ = <- proxyMsgChan
+	    //manage the indicator text/color
+	    switch pStatus.Text {
+		case "Proxy":
+		    pStatus.Text = "Starting Proxy..."
+		    pStatus.Importance = widget.HighImportance
+		case "Proxy Up!":
+		    pStatus.Text = "Stopping Proxy..."
+		    pStatus.Importance = widget.HighImportance
+		default:
+		    pStatus.Text = "Proxy"
+		    pStatus.Importance = widget.LowImportance
+	    }
+	    pStatus.Refresh()
+
+	    //when we want our threads to restart (read in new config)
+	    configChan <- true
+
+	    //we then have to start new threads
+	    listen
+	    send
+            refreshUsers
+	}    
 }
 
 // this thread should just read HELO and pass off to another thread
@@ -262,7 +294,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 		if message != "" {
 			//check, spelled like it sounds
 			if targetUser == configuration.User {
-				incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", User: "foo", ok: false}
+				incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", User: "SYSTEM", ok: false}
 				return
 			}
 
@@ -295,11 +327,30 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 	myText := widget.NewLabelWithStyle("Logged in as: "+configuration.User, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	myText.Importance = widget.WarningImportance
 
+	//create proxy status widget
+	pStatus := widget.NewLabelWithStyle("Proxy", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	pStatus.Importance = widget.LowImportance
+
 	//create interactive proxy button
 	proxyButton := widget.NewButton("Proxy", func() {
-		logger.Error("tapped")
-		self.Importance = widget.HighImportance
+		logger.Debug("tapped")
+		proxyMsgChan <- ""
 	})
+
+	//create container to hold current user/proxy button
+	space := widget.NewLabelWithStyle("                  ", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	topContainer := container.NewHBox()
+	sideLine3 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
+	sideLine3.StrokeWidth = 5
+	sideLine4 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
+	sideLine4.StrokeWidth = 2
+        topContainer = container.NewBorder(nil, nil, myText, sideLine3, nil)
+	topContainer = container.NewBorder(nil, nil, nil, pStatus, topContainer)
+        topContainer = container.NewBorder(nil, nil, nil, sideLine4, topContainer)
+	topContainer = container.NewBorder(nil, nil, nil, proxyButton, topContainer)
+	topContainer = container.NewBorder(nil, nil, space, nil, topContainer)
+	//topContainer.Offset = .75
+	//topContainer.Add(proxyButton)
 
 	// Create a container for the message entry container, clear button widget and send button container
 	sendContainer := container.NewBorder(clearButton, buttonContainer, nil, nil, messageEntry)
@@ -308,8 +359,6 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 	splitContainer := container.NewVSplit(scrollContainer, sendContainer)
 	splitContainer.Offset = .7
 	//Create borders for buttons
-	topContainer := container.NewHSplit(myText, proxyButton)
-	topContainer.Offset = .75
 	finalContainer := container.NewBorder(topLine, nil, onlineContainer, nil, splitContainer)
 	finalContainer = container.NewBorder(topContainer, nil, nil, nil, finalContainer)
 
@@ -317,6 +366,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 	//https://developer.fyne.io/widget/progressbar
 	//listen for incoming messages here
 	go listen(logger, configuration)
+	go proxyMgr(logger, configuration, pStatus)
 	go send(logger, configuration, sendButton, infinite, messageEntry)
 	go post(configuration, chatContainer)
 
