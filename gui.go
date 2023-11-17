@@ -95,7 +95,8 @@ func proxyMgr(logger *logrus.Logger, pStatus *widget.Label) {
 	for {
 		//we don't care what it says, just that it was added
 		_ = <-proxyMsgChan
-		prxy := "down"
+		logger.Debug("received tap")
+		prxy := "default"
 		//manage the indicator text/color
 		switch pStatus.Text {
 		case "Proxy":
@@ -121,11 +122,13 @@ func proxyMgr(logger *logrus.Logger, pStatus *widget.Label) {
 			globalConfig.RandomURL = "https://localhost:9090/api/otp"
 			globalConfig.ExchangeURL = "wss://localhost:9090/ws"
 			go proxy(globalConfig, logger, pStatus)
+		        logger.Debug("proxy Up")
 		} else if prxy == "down" {
 			quit <- true
 			globalConfig.RandomURL = configuredRandomURL
 			globalConfig.ExchangeURL = configuredExchangeURL
-		}
+		        logger.Debug("proxy Down")
+		} 
 	}
 }
 
