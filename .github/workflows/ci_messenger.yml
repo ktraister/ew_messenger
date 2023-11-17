@@ -49,12 +49,14 @@ jobs:
       - name: Release for private repo
         uses: ncipollo/release-action@v1
         with:
+          generateReleaseNotes: true
           artifacts: "*.tar.xz"
           token: ${{secrets.RELEASE_TOKEN}}
 
       - name: Release for public repo
         uses: ncipollo/release-action@v1
         with:
+          generateReleaseNotes: true
           artifacts: "*.tar.xz"
           token: ${{secrets.RELEASE_TOKEN}}
           repo: endless_waltz_public
