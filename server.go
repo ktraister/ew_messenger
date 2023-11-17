@@ -99,12 +99,12 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 		return
 	}
 
-        logger.Debug("got base64 cipherText ", dat["msg"].(string))
-        decodedBytes, err := base64.StdEncoding.DecodeString(dat["msg"].(string))
-        if err != nil {                      
-                fmt.Println("Error decoding base64:", err)
-                return 
-        } 
+	logger.Debug("got base64 cipherText ", dat["msg"].(string))
+	decodedBytes, err := base64.StdEncoding.DecodeString(dat["msg"].(string))
+	if err != nil {
+		fmt.Println("Error decoding base64:", err)
+		return
+	}
 	logger.Debug("decrypting cipherText ", decodedBytes)
 	plainText, err := ecies.Decrypt(suite, qPrivKey, decodedBytes, suite.Hash)
 	if err != nil {

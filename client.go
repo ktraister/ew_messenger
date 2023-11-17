@@ -120,7 +120,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 		fmt.Println("Error decoding base64:", err)
 		return false
 	}
-        logger.Debug("qPubKey data: ", decodedBytes)
+	logger.Debug("qPubKey data: ", decodedBytes)
 	err = qPubKey.UnmarshalBinary(decodedBytes)
 	if err != nil {
 		logger.Error(fmt.Sprintf("PubKey Marshall Error: %d", err))

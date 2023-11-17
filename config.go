@@ -11,20 +11,28 @@ import (
 type Configurations struct {
 	RandomURL   string
 	ExchangeURL string
+	SSHHost     string
 	LogLevel    string
 	User        string
 	Passwd      string
 }
 
+var configuredRandomURL = ""
+var configuredExchangeURL = ""
+
 func fetchConfig() Configurations {
-	var configuration Configurations
 	//create default config
 	defaultConfig := Configurations{
 		RandomURL:   "https://api.endlesswaltz.xyz:443/api/otp",
 		ExchangeURL: "wss://exchange.endlesswaltz.xyz:443/ws",
+		SSHHost:     "endlesswaltz.xyz",
 		LogLevel:    "Error",
 	}
 
+	configuredRandomURL = defaultConfig.RandomURL
+	configuredExchangeURL = defaultConfig.ExchangeURL
+
+	//Config file override code
 	currentUser, err := user.Current()
 	if err != nil {
 		fmt.Println("Unable to get current user: ", err)
@@ -35,7 +43,7 @@ func fetchConfig() Configurations {
 	configDir := fmt.Sprintf("%s/.ew", currentUser.HomeDir)
 	configFile := fmt.Sprintf("%s/config.yml", configDir)
 
-	//check if config file exists, skip if not
+	//check if config file exists, return if not
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
 		return defaultConfig
 	}
@@ -50,11 +58,14 @@ func fetchConfig() Configurations {
 		fmt.Println("Viper:Error reading config file: ", err)
 		return defaultConfig
 	}
-	err = viper.Unmarshal(&configuration)
+	err = viper.Unmarshal(&defaultConfig)
 	if err != nil {
 		fmt.Println("Viper:Unable to decode into struct: ", err)
 		return defaultConfig
 	}
 
-	return configuration
+	configuredRandomURL = defaultConfig.RandomURL
+	configuredExchangeURL = defaultConfig.ExchangeURL
+
+	return defaultConfig
 }

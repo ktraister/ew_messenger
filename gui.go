@@ -28,29 +28,31 @@ import (
 var users = []string{}
 var targetUser = ""
 var stashedMessages = []Post{}
+var globalConfig Configurations
+var proxyMsgChan = make(chan string)
 
-func checkCreds(configuration Configurations) (bool, string) {
+func checkCreds() (bool, string) {
 	//setup tls
-	ts := tlsClient(configuration.RandomURL)
+	ts := tlsClient(globalConfig.RandomURL)
 	//check and make sure inserted creds
 	//Random and Exchange will use same mongo, so the creds will be valid for both
-	health_url := fmt.Sprintf("%s%s", strings.Split(configuration.RandomURL, "/otp")[0], "/healthcheck")
+	health_url := fmt.Sprintf("%s%s", strings.Split(globalConfig.RandomURL, "/otp")[0], "/healthcheck")
 	req, err := http.NewRequest("GET", health_url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", configuration.User)
-	req.Header.Set("Passwd", configuration.Passwd)
+	req.Header.Set("User", globalConfig.User)
+	req.Header.Set("Passwd", globalConfig.Passwd)
 	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	errorText := ""
 	if err != nil {
 		errorText = "Couldn't Connect to RandomAPI"
-		fmt.Println(errorText + " " + configuration.RandomURL)
+		fmt.Println(errorText + " " + globalConfig.RandomURL)
 		fmt.Println("Quietly exiting now. Please reconfigure.")
 		return false, errorText
 	}
 	if resp == nil {
 		errorText = "No Response From RandomAPI"
-		fmt.Println(errorText + " " + configuration.RandomURL)
+		fmt.Println(errorText + " " + globalConfig.RandomURL)
 		fmt.Println("Quietly exiting now. Please reconfigure.")
 		return false, errorText
 	}
@@ -88,10 +90,52 @@ func messageStashed(user string) bool {
 	return false
 }
 
+// this thread manages proxy status and symbols
+func proxyMgr(logger *logrus.Logger, pStatus *widget.Label) {
+	for {
+		//we don't care what it says, just that it was added
+		_ = <-proxyMsgChan
+		logger.Debug("received tap")
+		prxy := "default"
+		//manage the indicator text/color
+		switch pStatus.Text {
+		case "Proxy Off":
+			pStatus.Text = "Starting Proxy..."
+			pStatus.Importance = widget.MediumImportance
+			prxy = "up"
+		case "Proxy Up!":
+			pStatus.Text = "Stopping Proxy..."
+			pStatus.Importance = widget.MediumImportance
+			prxy = "down"
+		case "Starting Proxy...":
+			pStatus.Text = "Stopping Proxy..."
+			pStatus.Importance = widget.MediumImportance
+			prxy = "down"
+		default:
+			pStatus.Text = "Proxy Off"
+			pStatus.Importance = widget.LowImportance
+		}
+		pStatus.Refresh()
+
+		if prxy == "up" {
+			//when we want our threads to read in new config
+			globalConfig.RandomURL = "https://localhost:9090/api/otp"
+			globalConfig.ExchangeURL = "wss://localhost:9090/ws"
+			go proxy(globalConfig, logger, pStatus)
+			logger.Debug("proxy Up")
+		} else if prxy == "down" {
+			quit <- true
+			globalConfig.RandomURL = configuredRandomURL
+			globalConfig.ExchangeURL = configuredExchangeURL
+			logger.Debug("proxy Down")
+		}
+	}
+}
+
 // this thread should just read HELO and pass off to another thread
-func listen(logger *logrus.Logger, configuration Configurations) {
-	localUser := fmt.Sprintf("%s_%s", configuration.User, "server")
-	cm, err := exConnect(logger, configuration, localUser)
+func listen(logger *logrus.Logger) {
+	localUser := fmt.Sprintf("%s_%s", globalConfig.User, "server")
+	cm, err := exConnect(logger, globalConfig, localUser)
 	if err != nil {
 		return
 	}
@@ -119,12 +163,12 @@ func listen(logger *logrus.Logger, configuration Configurations) {
 			continue
 		}
 		//handle connection creates new socket inside goRoutine
-		go handleConnection(dat, logger, configuration)
+		go handleConnection(dat, logger, globalConfig)
 	}
 }
 
 // send needs to be a wrapper thread for go functions
-func send(logger *logrus.Logger, configuration Configurations, sendButton *widget.Button, progressBar *widget.ProgressBarInfinite, textBox *widget.Entry) {
+func send(logger *logrus.Logger, sendButton *widget.Button, progressBar *widget.ProgressBarInfinite, textBox *widget.Entry) {
 	for {
 		message := <-outgoingMsgChan
 		//set container to sending progressbar widget
@@ -134,25 +178,25 @@ func send(logger *logrus.Logger, configuration Configurations, sendButton *widge
 		//set container to sending progressbar widget
 
 		//update user and send message to server root socket
-		ok := ew_client(logger, configuration, message)
+		ok := ew_client(logger, globalConfig, message)
 		//reset container to prior
 		sendButton.Show()
 		textBox.Show()
 		progressBar.Hide()
 
 		//post our sent message
-		incomingMsgChan <- Post{Msg: message.Msg, User: configuration.User, ok: ok}
+		incomingMsgChan <- Post{Msg: message.Msg, User: globalConfig.User, ok: ok}
 	}
 }
 
-func post(configuration Configurations, container *fyne.Container) {
+func post(container *fyne.Container) {
 	for {
 		message := <-incomingMsgChan
 		//this approach works
 		if message.User == "Sending messages to" {
 			messageLabel := widget.NewLabelWithStyle("Sending messages to: "+message.Msg, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 			container.Add(messageLabel)
-		} else if targetUser != message.User && configuration.User != message.User {
+		} else if targetUser != message.User && globalConfig.User != message.User {
 			//we're not focused on the user the message is from
 			//stash the message for now
 			stashedMessages = append(stashedMessages, message)
@@ -167,10 +211,10 @@ func post(configuration Configurations, container *fyne.Container) {
 	}
 }
 
-func refreshUsers(logger *logrus.Logger, configuration Configurations, container *fyne.Container) {
+func refreshUsers(logger *logrus.Logger, container *fyne.Container) {
 	for {
 		users = []string{}
-		users, _ = getExUsers(logger, configuration)
+		users, _ = getExUsers(logger, globalConfig)
 		//logger.Debug("refreshUsers --> ", users)
 		container.Refresh()
 		//refresh rate
@@ -178,7 +222,7 @@ func refreshUsers(logger *logrus.Logger, configuration Configurations, container
 	}
 }
 
-func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Configurations) {
+func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	// Create a scrollable container for chat messages
 	chatContainer := container.NewVBox()
 	scrollContainer := container.NewVScroll(chatContainer)
@@ -213,7 +257,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 	onlineUsers = container.NewBorder(onlineUsers, nil, nil, sideLine)
 
 	//add a goroutine here to read ExchangeAPI for live users and populate with labels
-	go refreshUsers(logger, configuration, onlineUsers)
+	go refreshUsers(logger, onlineUsers)
 
 	//build our user list
 	userList := widget.NewList(
@@ -261,8 +305,8 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 		message := messageEntry.Text
 		if message != "" {
 			//check, spelled like it sounds
-			if targetUser == configuration.User {
-				incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", User: "foo", ok: false}
+			if targetUser == globalConfig.User {
+				incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", User: "SYSTEM", ok: false}
 				return
 			}
 
@@ -292,8 +336,30 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 	clearButton.Importance = widget.DangerImportance
 
 	//create the widget to display current user
-	myText := widget.NewLabelWithStyle("Logged in as: "+configuration.User, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	myText := widget.NewLabelWithStyle("Logged in as: "+globalConfig.User, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	myText.Importance = widget.WarningImportance
+	textContainer := container.New(layout.NewCenterLayout(), myText)
+
+	//create proxy status widget
+	pStatus := widget.NewLabelWithStyle("Proxy Off", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	pStatus.Importance = widget.LowImportance
+
+	//create interactive proxy button
+	proxyButton := widget.NewButton("Proxy", func() {
+		logger.Debug("tapped")
+		proxyMsgChan <- ""
+	})
+
+	//create container to hold current user/proxy button
+	topContainer := container.NewHBox()
+	sideLine3 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
+	sideLine3.StrokeWidth = 5
+	sideLine4 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
+	sideLine4.StrokeWidth = 2
+	topContainer = container.NewBorder(nil, nil, nil, sideLine3, textContainer)
+	topContainer = container.NewBorder(nil, nil, nil, pStatus, topContainer)
+	topContainer = container.NewBorder(nil, nil, nil, sideLine4, topContainer)
+	topContainer = container.NewBorder(nil, nil, nil, proxyButton, topContainer)
 
 	// Create a container for the message entry container, clear button widget and send button container
 	sendContainer := container.NewBorder(clearButton, buttonContainer, nil, nil, messageEntry)
@@ -303,36 +369,38 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger, configuration Con
 	splitContainer.Offset = .7
 	//Create borders for buttons
 	finalContainer := container.NewBorder(topLine, nil, onlineContainer, nil, splitContainer)
-	finalContainer = container.NewBorder(myText, nil, nil, nil, finalContainer)
+	finalContainer = container.NewBorder(topContainer, nil, nil, nil, finalContainer)
 
 	//replace button in buttonContainer with progressBar when firing message
 	//https://developer.fyne.io/widget/progressbar
 	//listen for incoming messages here
-	go listen(logger, configuration)
-	go send(logger, configuration, sendButton, infinite, messageEntry)
-	go post(configuration, chatContainer)
+	go listen(logger)
+	go proxyMgr(logger, pStatus)
+	go send(logger, sendButton, infinite, messageEntry)
+	go post(chatContainer)
 
 	myWindow.SetContent(finalContainer)
 	myWindow.Resize(fyne.NewSize(600, 800))
 	myWindow.Show()
 }
 
-func afterLogin(logger *logrus.Logger, configuration Configurations, myApp fyne.App, loginWindow fyne.Window) {
+func afterLogin(logger *logrus.Logger, myApp fyne.App, loginWindow fyne.Window) {
 	//myApp.Preferences().SetString("AppTimeout", string(time.Minute))
 	myWindow := myApp.NewWindow("EW Messenger")
 	myWindow.SetMaster()
-	configureGUI(myWindow, logger, configuration)
+	configureGUI(myWindow, logger)
 }
 
 func main() {
-	//configuration stuff
-	configuration := fetchConfig()
-	logger := createLogger(configuration.LogLevel, "normal")
+	//globalConfig stuff
+	globalConfig = fetchConfig()
+	logger := createLogger(globalConfig.LogLevel, "normal")
 
 	// Reading variables using the model
 	logger.Debug("Reading variables using the model..")
-	logger.Debug("randomURL is\t\t", configuration.RandomURL)
-	logger.Debug("exchangeURL is\t", configuration.ExchangeURL)
+	logger.Debug("randomURL is\t\t", globalConfig.RandomURL)
+	logger.Debug("exchangeURL is\t", globalConfig.ExchangeURL)
+	logger.Debug("sshHost is\t\t", globalConfig.SSHHost)
 
 	//add "starting up" message while loading
 	myApp := app.NewWithID("EW Messenger")
@@ -352,12 +420,12 @@ func main() {
 			hashString := hex.EncodeToString(hashSum)
 
 			//set values we just took in with login widget
-			configuration.User = strings.ToLower(username.Text)
-			configuration.Passwd = hashString
+			globalConfig.User = strings.ToLower(username.Text)
+			globalConfig.Passwd = hashString
 			logger.Debug(hashString)
 
 			//pass the hash lol
-			ok, err := checkCreds(configuration)
+			ok, err := checkCreds()
 
 			if !ok || !b {
 				//this is caused by an error in the checkCreds routine
@@ -371,7 +439,7 @@ func main() {
 			logger.Debug("creds passed check!")
 
 			//run the next window
-			afterLogin(logger, configuration, myApp, w)
+			afterLogin(logger, myApp, w)
 			w.Close()
 		}, w)
 	}))
