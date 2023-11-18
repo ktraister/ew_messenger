@@ -65,7 +65,7 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 	}
 	defer localListener.Close()
 
-	proxyPort = listener.Addr().(*net.TCPAddr).Port
+	proxyPort = localListener.Addr().(*net.TCPAddr).Port
 
 	logger.Info(fmt.Sprintf("Local port forwarding started on port %d...", proxyPort))
 	pStatus.Text = "Proxy Up!"
