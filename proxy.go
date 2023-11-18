@@ -10,6 +10,7 @@ import (
 )
 
 var quit = make(chan bool)
+var proxyPort int
 
 // if true proxy
 func proxyCheck() bool {
@@ -32,7 +33,7 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 	sshPort := 2222
 	sshUser := configuration.User
 	sshPassword := configuration.Passwd
-	localPort := 9090
+	localPort := 0
 	remoteAddress := "localhost:443"
 
 	// Create an SSH client configuration
@@ -64,7 +65,9 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 	}
 	defer localListener.Close()
 
-	logger.Info(fmt.Sprintf("Local port forwarding started on port %d...", localPort))
+	proxyPort = localListener.Addr().(*net.TCPAddr).Port
+
+	logger.Info(fmt.Sprintf("Local port forwarding started on port %d...", proxyPort))
 	pStatus.Text = "Proxy Up!"
 	pStatus.Importance = widget.HighImportance
 	pStatus.Refresh()

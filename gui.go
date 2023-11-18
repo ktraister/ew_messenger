@@ -118,10 +118,14 @@ func proxyMgr(logger *logrus.Logger, pStatus *widget.Label) {
 		pStatus.Refresh()
 
 		if prxy == "up" {
-			//when we want our threads to read in new config
-			globalConfig.RandomURL = "https://localhost:9090/api/otp"
-			globalConfig.ExchangeURL = "wss://localhost:9090/ws"
 			go proxy(globalConfig, logger, pStatus)
+			//sleep to give the os a chance to assign us a port and listen
+			time.Sleep(1 * time.Second)
+			//when we want our threads to read in new config
+			globalConfig.RandomURL = fmt.Sprintf("https://localhost:%d/api/otp", proxyPort)
+			globalConfig.ExchangeURL = fmt.Sprintf("wss://localhost:%d/ws", proxyPort)
+			logger.Debug(globalConfig.RandomURL)
+			logger.Debug(globalConfig.ExchangeURL)
 			logger.Debug("proxy Up")
 		} else if prxy == "down" {
 			quit <- true
