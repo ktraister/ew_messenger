@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"fyne.io/fyne/v2/widget"
 	"github.com/sirupsen/logrus"
@@ -26,6 +27,22 @@ func proxyFail(pStatus *widget.Label) {
 	globalConfig.ExchangeURL = configuredExchangeURL
 }
 
+// create human-readable SSH-key strings
+func keyString(k ssh.PublicKey) string {
+	return k.Type() + " " + base64.StdEncoding.EncodeToString(k.Marshal()) // e.g. "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTY...."
+}
+
+func trustedHostKeyCallback(logger *logrus.Logger, trustedKey string) ssh.HostKeyCallback {
+	return func(_ string, _ net.Addr, k ssh.PublicKey) error {
+		ks := keyString(k)
+		if trustedKey != ks {
+			logger.Error("SSH-key verification FAILED for key: ", keyString(k))
+			return fmt.Errorf("SSH-key verification: expected %q but got %q", trustedKey, ks)
+		}
+		return nil
+	}
+}
+
 func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.Label) {
 	logger.Info("Init proxy thread")
 	// hard-coding proxy vars, but ingesting creds
@@ -42,7 +59,7 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 		Auth: []ssh.AuthMethod{
 			ssh.Password(sshPassword),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // Insecure; use proper verification in production
+		HostKeyCallback: trustedHostKeyCallback(logger, configuration.SSHKey),
 	}
 	logger.Info("created SSH connection config")
 
