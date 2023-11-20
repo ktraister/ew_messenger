@@ -73,3 +73,17 @@ linux image is also used as a base for the root dockerfile. These need to be
 here too, and can be used in case an update is needed on the custom builder 
 containers. 
 
+## Build
+### Windows & Linux
+Windows and Linux builds are currently supported. They use the dockerfiles
+managed in the above docker directories. 
+
+### Mac
+Mac OS has been engineered to be difficult. I'll come back to this soon to
+build support for this major Pain in the Ass operating system.
+
+### BSD
+BSD has effectively lost the software arms race, and will one day be
+consigned to history. In the meantime, people still use it, and people still
+love it. The users of BSD may one day decide to ask for a BSD compliant
+EW Messenger, but until then, I'm not going to support it. 
