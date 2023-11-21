@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/sirupsen/logrus"
 	"image/color"
@@ -247,7 +248,9 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	// add lines to use with onlinePanel
 	text := widget.NewLabelWithStyle("    Online Users    ", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	topLine := canvas.NewLine(color.RGBA{0, 0, 0, 255})
+	topLine2 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
 	topLine.StrokeWidth = 5
+	topLine2.StrokeWidth = 3
 	bLine := canvas.NewLine(color.RGBA{0, 0, 0, 255})
 	bLine.StrokeWidth = 2
 	sideLine := canvas.NewLine(color.RGBA{0, 0, 0, 255})
@@ -354,6 +357,27 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 		proxyMsgChan <- ""
 	})
 
+	//toolbar
+	muted := false
+	toolbar := widget.NewToolbar(
+		widget.NewToolbarAction(theme.HelpIcon(), func() {
+			fmt.Println("Display help")
+		}),
+		widget.NewToolbarSeparator(),
+		widget.NewToolbarAction(theme.VolumeUpIcon(), func() {
+			// Toggle the mute state
+			muted = !muted
+
+			// Set the toolbar action icon based on the mute state
+			if muted {
+				toolbar.Items[1].SetIcon(theme.VolumeMuteIcon())
+			} else {
+				toolbar.Items[1].SetIcon(theme.VolumeUPIcon())
+			}
+		}),
+		widget.NewToolbarSpacer(),
+	)
+
 	//create container to hold current user/proxy button
 	topContainer := container.NewHBox()
 	sideLine3 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
@@ -374,6 +398,8 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	//Create borders for buttons
 	finalContainer := container.NewBorder(topLine, nil, onlineContainer, nil, splitContainer)
 	finalContainer = container.NewBorder(topContainer, nil, nil, nil, finalContainer)
+	finalContainer = container.NewBorder(topLine2, nil, nil, nil, finalContainer)
+	finalContainer = container.NewBorder(toolbar, nil, nil, nil, finalContainer)
 
 	//replace button in buttonContainer with progressBar when firing message
 	//https://developer.fyne.io/widget/progressbar
