@@ -98,7 +98,6 @@ func messageStashed(user string) bool {
 
 // this thread manages proxy status and symbols
 func proxyMgr(logger *logrus.Logger, pStatus *widget.Label) {
-	for {
 	        //start the proxy
 		pStatus.Text = "Starting Proxy..."
 		pStatus.Importance = widget.MediumImportance
@@ -106,7 +105,7 @@ func proxyMgr(logger *logrus.Logger, pStatus *widget.Label) {
 
 		go proxy(globalConfig, logger, pStatus)
 		//sleep to give the os a chance to assign us a port and listen
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		//when we want our threads to read in new config
 		globalConfig.RandomURL = fmt.Sprintf("https://localhost:%d/api/otp", proxyPort)
 		globalConfig.ExchangeURL = fmt.Sprintf("wss://localhost:%d/ws", proxyPort)
@@ -117,7 +116,6 @@ func proxyMgr(logger *logrus.Logger, pStatus *widget.Label) {
 		//used to disable proxy
 		//globalConfig.RandomURL = configuredRandomURL
 		//globalConfig.ExchangeURL = configuredExchangeURL
-	}
 }
 
 // this thread should just read HELO and pass off to another thread
@@ -366,6 +364,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 		logger.Debug(input)
 		selectedSound = input
 	})
+	alertSelect.SetSelected("warning_beep")
 	toolBarContainer := container.NewBorder(nil, nil, nil, volp, toolbar)
 	toolBarContainer = container.NewBorder(nil, nil, nil, alertSelect, toolBarContainer)
 
