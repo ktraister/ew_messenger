@@ -307,7 +307,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	textContainer := container.New(layout.NewCenterLayout(), myText)
 
 	//create proxy status widget
-	pStatus := widget.NewLabelWithStyle("Proxy Off", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	pStatus := widget.NewLabelWithStyle("Starting Proxy...", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	pStatus.Importance = widget.LowImportance
 	go proxy(globalConfig, logger, pStatus)
 
