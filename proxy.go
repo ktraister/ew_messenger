@@ -10,7 +10,6 @@ import (
 	"net"
 )
 
-var quit = make(chan bool)
 var proxyPort int
 
 // if true proxy
@@ -83,6 +82,8 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 	defer localListener.Close()
 
 	proxyPort = localListener.Addr().(*net.TCPAddr).Port
+	globalConfig.RandomURL = fmt.Sprintf("https://localhost:%d/api/otp", proxyPort)
+	globalConfig.ExchangeURL = fmt.Sprintf("wss://localhost:%d/ws", proxyPort)
 
 	logger.Info(fmt.Sprintf("Local port forwarding started on port %d...", proxyPort))
 	pStatus.Text = "Proxy Up!"
@@ -91,30 +92,24 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 
 	// Accept incoming connections on local port
 	for {
-		select {
-		case <-quit:
-			proxyMsgChan <- ""
+		localConn, err := localListener.Accept()
+		if err != nil {
+			logger.Error("Failed to accept incoming connection:", err)
+			proxyFail(pStatus)
 			return
-		default:
-			localConn, err := localListener.Accept()
-			if err != nil {
-				logger.Error("Failed to accept incoming connection:", err)
-				proxyFail(pStatus)
-				return
-			}
-
-			// Connect to the remote address
-			remoteConn, err := client.Dial("tcp", remoteAddress)
-			if err != nil {
-				logger.Error("Failed to dial remote address:", err)
-				proxyFail(pStatus)
-				return
-			}
-
-			// Handle data forwarding in both directions
-			go forward(localConn, remoteConn, logger)
-			go forward(remoteConn, localConn, logger)
 		}
+
+		// Connect to the remote address
+		remoteConn, err := client.Dial("tcp", remoteAddress)
+		if err != nil {
+			logger.Error("Failed to dial remote address:", err)
+			proxyFail(pStatus)
+			return
+		}
+
+		// Handle data forwarding in both directions
+		go forward(localConn, remoteConn, logger)
+		go forward(remoteConn, localConn, logger)
 	}
 }
 
