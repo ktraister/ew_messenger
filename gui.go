@@ -360,7 +360,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	//toolbar
 	toolbar := widget.NewToolbar(
 		widget.NewToolbarAction(theme.HelpIcon(), func() {
-			fmt.Println("Display help")
+		        logger.Debug("help!")
 		}),
 		widget.NewToolbarSeparator(),
 		widget.NewToolbarAction(theme.VolumeUpIcon(), func() {
@@ -368,14 +368,14 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 				return
 			}
 			volume += 1
-			fmt.Println(volume)
+			logger.Debug(volume)
 		}),
 		widget.NewToolbarAction(theme.VolumeDownIcon(), func() {
 			if volume == -10 {
 				return
 			}
 			volume -= 1
-			fmt.Println(volume)
+			logger.Debug(volume)
 		}),
 		widget.NewToolbarSpacer(),
 	)
