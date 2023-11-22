@@ -91,30 +91,24 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 
 	// Accept incoming connections on local port
 	for {
-		select {
-		case <-quit:
-			proxyMsgChan <- ""
+		localConn, err := localListener.Accept()
+		if err != nil {
+			logger.Error("Failed to accept incoming connection:", err)
+			proxyFail(pStatus)
 			return
-		default:
-			localConn, err := localListener.Accept()
-			if err != nil {
-				logger.Error("Failed to accept incoming connection:", err)
-				proxyFail(pStatus)
-				return
-			}
-
-			// Connect to the remote address
-			remoteConn, err := client.Dial("tcp", remoteAddress)
-			if err != nil {
-				logger.Error("Failed to dial remote address:", err)
-				proxyFail(pStatus)
-				return
-			}
-
-			// Handle data forwarding in both directions
-			go forward(localConn, remoteConn, logger)
-			go forward(remoteConn, localConn, logger)
 		}
+
+		// Connect to the remote address
+		remoteConn, err := client.Dial("tcp", remoteAddress)
+		if err != nil {
+			logger.Error("Failed to dial remote address:", err)
+			proxyFail(pStatus)
+			return
+		}
+
+		// Handle data forwarding in both directions
+		go forward(localConn, remoteConn, logger)
+		go forward(remoteConn, localConn, logger)
 	}
 }
 

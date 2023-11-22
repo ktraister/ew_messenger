@@ -30,7 +30,6 @@ var users = []string{}
 var targetUser = ""
 var stashedMessages = []Post{}
 var globalConfig Configurations
-var proxyMsgChan = make(chan string)
 
 // okay you can optimize it
 func cnv(input float64) float64 {
@@ -100,46 +99,24 @@ func messageStashed(user string) bool {
 // this thread manages proxy status and symbols
 func proxyMgr(logger *logrus.Logger, pStatus *widget.Label) {
 	for {
-		//we don't care what it says, just that it was added
-		_ = <-proxyMsgChan
-		logger.Debug("received tap")
-		prxy := "default"
-		//manage the indicator text/color
-		switch pStatus.Text {
-		case "Proxy Off":
-			pStatus.Text = "Starting Proxy..."
-			pStatus.Importance = widget.MediumImportance
-			prxy = "up"
-		case "Proxy Up!":
-			pStatus.Text = "Stopping Proxy..."
-			pStatus.Importance = widget.MediumImportance
-			prxy = "down"
-		case "Starting Proxy...":
-			pStatus.Text = "Stopping Proxy..."
-			pStatus.Importance = widget.MediumImportance
-			prxy = "down"
-		default:
-			pStatus.Text = "Proxy Off"
-			pStatus.Importance = widget.LowImportance
-		}
+	        //start the proxy
+		pStatus.Text = "Starting Proxy..."
+		pStatus.Importance = widget.MediumImportance
 		pStatus.Refresh()
 
-		if prxy == "up" {
-			go proxy(globalConfig, logger, pStatus)
-			//sleep to give the os a chance to assign us a port and listen
-			time.Sleep(1 * time.Second)
-			//when we want our threads to read in new config
-			globalConfig.RandomURL = fmt.Sprintf("https://localhost:%d/api/otp", proxyPort)
-			globalConfig.ExchangeURL = fmt.Sprintf("wss://localhost:%d/ws", proxyPort)
-			logger.Debug(globalConfig.RandomURL)
-			logger.Debug(globalConfig.ExchangeURL)
-			logger.Debug("proxy Up")
-		} else if prxy == "down" {
-			quit <- true
-			globalConfig.RandomURL = configuredRandomURL
-			globalConfig.ExchangeURL = configuredExchangeURL
-			logger.Debug("proxy Down")
-		}
+		go proxy(globalConfig, logger, pStatus)
+		//sleep to give the os a chance to assign us a port and listen
+		time.Sleep(200 * time.Millisecond)
+		//when we want our threads to read in new config
+		globalConfig.RandomURL = fmt.Sprintf("https://localhost:%d/api/otp", proxyPort)
+		globalConfig.ExchangeURL = fmt.Sprintf("wss://localhost:%d/ws", proxyPort)
+		logger.Debug(globalConfig.RandomURL)
+		logger.Debug(globalConfig.ExchangeURL)
+		logger.Debug("proxy Up")
+
+		//used to disable proxy
+		//globalConfig.RandomURL = configuredRandomURL
+		//globalConfig.ExchangeURL = configuredExchangeURL
 	}
 }
 
@@ -357,12 +334,6 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	pStatus := widget.NewLabelWithStyle("Proxy Off", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	pStatus.Importance = widget.LowImportance
 
-	//create interactive proxy button
-	proxyButton := widget.NewButton("Proxy", func() {
-		logger.Debug("tapped")
-		proxyMsgChan <- ""
-	})
-
 	//toolbar
 	volp := widget.NewProgressBar()
 	volp.SetValue(cnv(volume))
@@ -406,8 +377,6 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	sideLine4.StrokeWidth = 2
 	topContainer = container.NewBorder(nil, nil, nil, sideLine3, textContainer)
 	topContainer = container.NewBorder(nil, nil, nil, pStatus, topContainer)
-	topContainer = container.NewBorder(nil, nil, nil, sideLine4, topContainer)
-	topContainer = container.NewBorder(nil, nil, nil, proxyButton, topContainer)
 
 	// Create a container for the message entry container, clear button widget and send button container
 	sendContainer := container.NewBorder(clearButton, buttonContainer, nil, nil, messageEntry)
