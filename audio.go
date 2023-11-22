@@ -2,21 +2,22 @@ package main
 
 import (
 	"embed"
-	"time"
-
+	"fmt"
 	"github.com/faiface/beep"
+	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
-	"github.com/faiface/beep/effects"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 //go:embed audio
 var content embed.FS
 var volume = float64(-5)
+var selectedSound = "warning_beep"
 
 func playSound(logger *logrus.Logger) {
-	f, err := content.Open("audio/warning_beep.mp3")
+	f, err := content.Open(fmt.Sprintf("audio/%s.mp3", selectedSound))
 	if err != nil {
 		logger.Error(err)
 	}

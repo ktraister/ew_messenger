@@ -32,6 +32,12 @@ var stashedMessages = []Post{}
 var globalConfig Configurations
 var proxyMsgChan = make(chan string)
 
+// okay you can optimize it
+func cnv(input float64) float64 {
+	factor := -(input)
+	return 1.0 - 0.1*factor
+}
+
 func checkCreds() (bool, string) {
 	//setup tls
 	ts := tlsClient(globalConfig.RandomURL)
@@ -358,9 +364,11 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	})
 
 	//toolbar
+	volp := widget.NewProgressBar()
+	volp.SetValue(cnv(volume))
 	toolbar := widget.NewToolbar(
 		widget.NewToolbarAction(theme.HelpIcon(), func() {
-		        logger.Debug("help!")
+			logger.Debug("help!")
 		}),
 		widget.NewToolbarSeparator(),
 		widget.NewToolbarAction(theme.VolumeUpIcon(), func() {
@@ -368,6 +376,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 				return
 			}
 			volume += 1
+			volp.SetValue(cnv(volume))
 			logger.Debug(volume)
 		}),
 		widget.NewToolbarAction(theme.VolumeDownIcon(), func() {
@@ -375,10 +384,19 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 				return
 			}
 			volume -= 1
+			volp.SetValue(cnv(volume))
 			logger.Debug(volume)
 		}),
 		widget.NewToolbarSpacer(),
 	)
+	//alert selection
+	alerts := []string{"warning_beep", "navi_listen"}
+	alertSelect := widget.NewSelect(alerts, func(input string) {
+		logger.Debug(input)
+		selectedSound = input
+	})
+	toolBarContainer := container.NewBorder(nil, nil, nil, volp, toolbar)
+	toolBarContainer = container.NewBorder(nil, nil, nil, alertSelect, toolBarContainer)
 
 	//create container to hold current user/proxy button
 	topContainer := container.NewHBox()
@@ -401,7 +419,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	finalContainer := container.NewBorder(topLine, nil, onlineContainer, nil, splitContainer)
 	finalContainer = container.NewBorder(topContainer, nil, nil, nil, finalContainer)
 	finalContainer = container.NewBorder(topLine2, nil, nil, nil, finalContainer)
-	finalContainer = container.NewBorder(toolbar, nil, nil, nil, finalContainer)
+	finalContainer = container.NewBorder(toolBarContainer, nil, nil, nil, finalContainer)
 
 	//replace button in buttonContainer with progressBar when firing message
 	//https://developer.fyne.io/widget/progressbar
