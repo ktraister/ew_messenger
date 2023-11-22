@@ -32,33 +32,10 @@ var stashedMessages = []Post{}
 var globalConfig Configurations
 var proxyMsgChan = make(chan string)
 
-//okay you can optimize it
+// okay you can optimize it
 func cnv(input float64) float64 {
-    switch input {
-    case 0:
-	return 1.0
-    case -1:
-	return .9
-    case -2:
-	return .8
-    case -3:
-	return .7
-    case -4:
-	return .6
-    case -5:
-	return .5
-    case -6:
-	return .4
-    case -7:
-	return .3
-    case -8:
-	return .2
-    case -9:
-	return .1
-    case -10:
-	return 0.0
-    }
-    return 0.0
+	factor := -(input)
+	return 1.0 - 0.1*factor
 }
 
 func checkCreds() (bool, string) {
@@ -391,7 +368,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	volp.SetValue(cnv(volume))
 	toolbar := widget.NewToolbar(
 		widget.NewToolbarAction(theme.HelpIcon(), func() {
-		        logger.Debug("help!")
+			logger.Debug("help!")
 		}),
 		widget.NewToolbarSeparator(),
 		widget.NewToolbarAction(theme.VolumeUpIcon(), func() {
@@ -414,13 +391,12 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	)
 	//alert selection
 	alerts := []string{"warning_beep", "navi_listen"}
-	alertSelect := widget.NewSelect(alerts, func(input string){
+	alertSelect := widget.NewSelect(alerts, func(input string) {
 		logger.Debug(input)
-                selectedSound = input
+		selectedSound = input
 	})
 	toolBarContainer := container.NewBorder(nil, nil, nil, volp, toolbar)
 	toolBarContainer = container.NewBorder(nil, nil, nil, alertSelect, toolBarContainer)
-
 
 	//create container to hold current user/proxy button
 	topContainer := container.NewHBox()

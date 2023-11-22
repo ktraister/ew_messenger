@@ -2,13 +2,13 @@ package main
 
 import (
 	"embed"
-	"time"
-        "fmt"
+	"fmt"
 	"github.com/faiface/beep"
+	"github.com/faiface/beep/effects"
 	"github.com/faiface/beep/mp3"
 	"github.com/faiface/beep/speaker"
-	"github.com/faiface/beep/effects"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 //go:embed audio
