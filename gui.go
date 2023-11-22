@@ -131,6 +131,26 @@ func listen(logger *logrus.Logger) {
 	}
 }
 
+// function to send message from GUI
+func sendMsg(messageEntry *widget.Entry) {
+	// Get the message text from the entry field
+	message := messageEntry.Text
+	if message != "" {
+		//check, spelled like it sounds
+		if targetUser == globalConfig.User {
+			incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", User: "SYSTEM", ok: false}
+			return
+		}
+
+		//drop the messsage on the outgoing channel
+		outgoingMsgChan <- Post{Msg: message, User: targetUser, ok: true}
+
+		// Clear the message entry field after sending
+		messageEntry.SetText("")
+	}
+
+}
+
 // send needs to be a wrapper thread for go functions
 func send(logger *logrus.Logger, sendButton *widget.Button, progressBar *widget.ProgressBarInfinite, textBox *widget.Entry) {
 	for {
@@ -166,6 +186,7 @@ func post(container *fyne.Container) {
 			stashedMessages = append(stashedMessages, message)
 		} else if message.ok {
 			messageLabel := widget.NewLabel(fmt.Sprintf("%s: %s", message.User, message.Msg))
+			messageLabel.Wrapping = fyne.TextWrapBreak
 			container.Add(messageLabel)
 		} else {
 			messageLabel := widget.NewLabel(fmt.Sprintf("ERROR SENDING MSG %s", message.Msg))
@@ -200,9 +221,16 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	// Create an entry field for typing messages
 	messageEntry := widget.NewMultiLineEntry()
 	messageEntry.SetPlaceHolder("Type your message...")
+	messageEntry.Wrapping = fyne.TextWrapBreak
 	//hiding the entry until a user is selected
 	//come up with something cute to go here
 	messageEntry.Hide()
+	// Set the onTypedKey event listener for the Entry widget
+	myWindow.Canvas().SetOnTypedKey(func(keyEvent *fyne.KeyEvent) {
+		if keyEvent.Name == fyne.KeyReturn {
+			sendMsg(messageEntry)
+		}
+	})
 
 	// add lines to use with onlinePanel
 	text := widget.NewLabelWithStyle("    Online Users    ", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
@@ -266,23 +294,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	onlineContainer := container.New(layout.NewHBoxLayout(), onlineUsers)
 
 	//define the sendbutton and OnClickFunc
-	sendButton := widget.NewButton("Send", func() {
-		// Get the message text from the entry field
-		message := messageEntry.Text
-		if message != "" {
-			//check, spelled like it sounds
-			if targetUser == globalConfig.User {
-				incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", User: "SYSTEM", ok: false}
-				return
-			}
-
-			//drop the messsage on the outgoing channel
-			outgoingMsgChan <- Post{Msg: message, User: targetUser, ok: true}
-
-			// Clear the message entry field after sending
-			messageEntry.SetText("")
-		}
-	})
+	sendButton := widget.NewButton("Send", func() { sendMsg(messageEntry) })
 	//turn the send button blue
 	sendButton.Importance = widget.HighImportance
 
