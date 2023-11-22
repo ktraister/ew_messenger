@@ -10,7 +10,6 @@ import (
 	"net"
 )
 
-var quit = make(chan bool)
 var proxyPort int
 
 // if true proxy
@@ -83,6 +82,8 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 	defer localListener.Close()
 
 	proxyPort = localListener.Addr().(*net.TCPAddr).Port
+	globalConfig.RandomURL = fmt.Sprintf("https://localhost:%d/api/otp", proxyPort)
+	globalConfig.ExchangeURL = fmt.Sprintf("wss://localhost:%d/ws", proxyPort)
 
 	logger.Info(fmt.Sprintf("Local port forwarding started on port %d...", proxyPort))
 	pStatus.Text = "Proxy Up!"

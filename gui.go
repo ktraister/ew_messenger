@@ -96,28 +96,6 @@ func messageStashed(user string) bool {
 	return false
 }
 
-// this thread manages proxy status and symbols
-func proxyMgr(logger *logrus.Logger, pStatus *widget.Label) {
-	        //start the proxy
-		pStatus.Text = "Starting Proxy..."
-		pStatus.Importance = widget.MediumImportance
-		pStatus.Refresh()
-
-		go proxy(globalConfig, logger, pStatus)
-		//sleep to give the os a chance to assign us a port and listen
-		time.Sleep(500 * time.Millisecond)
-		//when we want our threads to read in new config
-		globalConfig.RandomURL = fmt.Sprintf("https://localhost:%d/api/otp", proxyPort)
-		globalConfig.ExchangeURL = fmt.Sprintf("wss://localhost:%d/ws", proxyPort)
-		logger.Debug(globalConfig.RandomURL)
-		logger.Debug(globalConfig.ExchangeURL)
-		logger.Debug("proxy Up")
-
-		//used to disable proxy
-		//globalConfig.RandomURL = configuredRandomURL
-		//globalConfig.ExchangeURL = configuredExchangeURL
-}
-
 // this thread should just read HELO and pass off to another thread
 func listen(logger *logrus.Logger) {
 	localUser := fmt.Sprintf("%s_%s", globalConfig.User, "server")
@@ -331,6 +309,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	//create proxy status widget
 	pStatus := widget.NewLabelWithStyle("Proxy Off", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	pStatus.Importance = widget.LowImportance
+	go proxy(globalConfig, logger, pStatus)
 
 	//toolbar
 	volp := widget.NewProgressBar()
@@ -393,7 +372,6 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	//https://developer.fyne.io/widget/progressbar
 	//listen for incoming messages here
 	go listen(logger)
-	go proxyMgr(logger, pStatus)
 	go send(logger, sendButton, infinite, messageEntry)
 	go post(chatContainer)
 
