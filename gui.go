@@ -358,22 +358,24 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	})
 
 	//toolbar
-	muted := false
 	toolbar := widget.NewToolbar(
 		widget.NewToolbarAction(theme.HelpIcon(), func() {
 			fmt.Println("Display help")
 		}),
 		widget.NewToolbarSeparator(),
 		widget.NewToolbarAction(theme.VolumeUpIcon(), func() {
-			// Toggle the mute state
-			muted = !muted
-
-			// Set the toolbar action icon based on the mute state
-			if muted {
-				toolbar.Items[1].SetIcon(theme.VolumeMuteIcon())
-			} else {
-				toolbar.Items[1].SetIcon(theme.VolumeUPIcon())
+			if volume == 0 {
+				return
 			}
+			volume += 1
+			fmt.Println(volume)
+		}),
+		widget.NewToolbarAction(theme.VolumeDownIcon(), func() {
+			if volume == -10 {
+				return
+			}
+			volume -= 1
+			fmt.Println(volume)
 		}),
 		widget.NewToolbarSpacer(),
 	)
