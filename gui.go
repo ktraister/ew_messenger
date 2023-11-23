@@ -225,7 +225,13 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	//hiding the entry until a user is selected
 	//come up with something cute to go here
 	messageEntry.Hide()
-	// Set the onTypedKey event listener for the Entry widget
+
+	//this sends a message if shift+enter is pressed in focus
+	messageEntry.OnSubmitted = func(input string) {
+		sendMsg(messageEntry)
+
+	}
+        //this sends the message if the rest of the gui is in focus
 	myWindow.Canvas().SetOnTypedKey(func(keyEvent *fyne.KeyEvent) {
 		if keyEvent.Name == fyne.KeyReturn {
 			sendMsg(messageEntry)
