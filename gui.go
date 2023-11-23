@@ -226,6 +226,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	//come up with something cute to go here
 	messageEntry.Hide()
 
+	//https://github.com/fyne-io/fyne/issues/1683#issuecomment-755390386
 	//this sends a message if shift+enter is pressed in focus
 	messageEntry.OnSubmitted = func(input string) {
 		sendMsg(messageEntry)
@@ -456,6 +457,11 @@ func main() {
 			afterLogin(logger, myApp, w)
 			w.Close()
 		}, w)
+		dialog.SetOnKeyDown(func(keyEvent *fyne.KeyEvent) {
+		    if keyEvent.Name == fyne.KeyReturn {
+			    confirm.Confirm()
+		    }
+		})
 	}))
 	w.RequestFocus()
 	w.CenterOnScreen()
