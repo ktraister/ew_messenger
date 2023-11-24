@@ -207,7 +207,11 @@ func refreshUsers(logger *logrus.Logger, container *fyne.Container) {
 	}
 }
 
-func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
+func afterLogin(logger *logrus.Logger, myApp fyne.App) {
+	//setup New window
+	myWindow := myApp.NewWindow("EW Messenger")
+	myWindow.SetMaster()
+
 	// Create a scrollable container for chat messages
 	chatContainer := container.NewVBox()
 	scrollContainer := container.NewVScroll(chatContainer)
@@ -220,24 +224,20 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 
 	// Create an entry field for typing messages
 	messageEntry := widget.NewMultiLineEntry()
-	messageEntry.SetPlaceHolder("Type your message...")
+	messageEntry.SetPlaceHolder("Type your message -- Shift + Enter to send")
 	messageEntry.Wrapping = fyne.TextWrapBreak
 	//hiding the entry until a user is selected
 	//come up with something cute to go here
 	messageEntry.Hide()
 
+	//WONT TRAP ENTER to send the message if rest of the gui in focus
 	//https://github.com/fyne-io/fyne/issues/1683#issuecomment-755390386
 	//this sends a message if shift+enter is pressed in focus
+	//apparently people like this behaviour /shrug
 	messageEntry.OnSubmitted = func(input string) {
 		sendMsg(messageEntry)
 
 	}
-        //this sends the message if the rest of the gui is in focus
-	myWindow.Canvas().SetOnTypedKey(func(keyEvent *fyne.KeyEvent) {
-		if keyEvent.Name == fyne.KeyReturn {
-			sendMsg(messageEntry)
-		}
-	})
 
 	// add lines to use with onlinePanel
 	text := widget.NewLabelWithStyle("    Online Users    ", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
@@ -284,8 +284,9 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 			}
 		})
 	userList.OnSelected = func(id widget.ListItemID) {
-		messageEntry.Show()
 		targetUser = users[id]
+		newConvoWin(logger, myApp, targetUser)
+		messageEntry.Show()
 		//clear the chat when switching users
 		chatContainer.Objects = chatContainer.Objects[:0]
 		messageLabel.Hide()
@@ -399,11 +400,11 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	myWindow.Show()
 }
 
-func afterLogin(logger *logrus.Logger, myApp fyne.App, loginWindow fyne.Window) {
-	//myApp.Preferences().SetString("AppTimeout", string(time.Minute))
-	myWindow := myApp.NewWindow("EW Messenger")
-	myWindow.SetMaster()
-	configureGUI(myWindow, logger)
+func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string) {
+	myWindow := myApp.NewWindow(user)
+	label := widget.NewLabel("Text")
+	myWindow.SetContent(label)
+	myWindow.Show()
 }
 
 func main() {
@@ -454,14 +455,9 @@ func main() {
 			logger.Debug("creds passed check!")
 
 			//run the next window
-			afterLogin(logger, myApp, w)
+			afterLogin(logger, myApp)
 			w.Close()
 		}, w)
-		dialog.SetOnKeyDown(func(keyEvent *fyne.KeyEvent) {
-		    if keyEvent.Name == fyne.KeyReturn {
-			    confirm.Confirm()
-		    }
-		})
 	}))
 	w.RequestFocus()
 	w.CenterOnScreen()
