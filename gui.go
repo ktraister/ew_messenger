@@ -151,22 +151,12 @@ func sendMsg(messageEntry *widget.Entry) {
 
 }
 
-// send needs to be a wrapper thread for go functions
-func send(logger *logrus.Logger, sendButton *widget.Button, progressBar *widget.ProgressBarInfinite, textBox *widget.Entry) {
+func send(logger *logrus.Logger, textBox *widget.Entry) {
 	for {
 		message := <-outgoingMsgChan
-		//set container to sending progressbar widget
-		sendButton.Hide()
-		textBox.Hide()
-		progressBar.Show()
-		//set container to sending progressbar widget
 
-		//update user and send message to server root socket
+		//update user and send message 
 		ok := ew_client(logger, globalConfig, message)
-		//reset container to prior
-		sendButton.Show()
-		textBox.Show()
-		progressBar.Hide()
 
 		//post our sent message
 		incomingMsgChan <- Post{Msg: message.Msg, User: globalConfig.User, ok: ok}
@@ -212,50 +202,16 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	myWindow := myApp.NewWindow("EW Messenger")
 	myWindow.SetMaster()
 
-	// Create a scrollable container for chat messages
-	chatContainer := container.NewVBox()
-	scrollContainer := container.NewVScroll(chatContainer)
-	scrollContainer.Resize(fyne.NewSize(500, 0))
-
-	//set greeting warning lable
-	messageLabel := widget.NewLabelWithStyle("Select a user to send messages", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	messageLabel.Importance = widget.MediumImportance
-	chatContainer.Add(messageLabel)
-
-	// Create an entry field for typing messages
-	messageEntry := widget.NewMultiLineEntry()
-	messageEntry.SetPlaceHolder("Type your message -- Shift + Enter to send")
-	messageEntry.Wrapping = fyne.TextWrapBreak
-	//hiding the entry until a user is selected
-	//come up with something cute to go here
-	messageEntry.Hide()
-
-	//WONT TRAP ENTER to send the message if rest of the gui in focus
-	//https://github.com/fyne-io/fyne/issues/1683#issuecomment-755390386
-	//this sends a message if shift+enter is pressed in focus
-	//apparently people like this behaviour /shrug
-	messageEntry.OnSubmitted = func(input string) {
-		sendMsg(messageEntry)
-
-	}
-
 	// add lines to use with onlinePanel
-	text := widget.NewLabelWithStyle("    Online Users    ", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	topLine := canvas.NewLine(color.RGBA{0, 0, 0, 255})
-	topLine2 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
-	topLine.StrokeWidth = 5
-	topLine2.StrokeWidth = 3
+	topLine.StrokeWidth = 1
 	bLine := canvas.NewLine(color.RGBA{0, 0, 0, 255})
-	bLine.StrokeWidth = 2
+	bLine.StrokeWidth = 5
 	sideLine := canvas.NewLine(color.RGBA{0, 0, 0, 255})
-	sideLine.StrokeWidth = 5
-	sideLine2 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
-	sideLine2.StrokeWidth = 5
+	sideLine.StrokeWidth = 3
 
 	// add onlineUsers panel to show and select users
-	onlineUsers := container.NewHBox(text)
-	onlineUsers = container.NewBorder(nil, bLine, nil, sideLine2, onlineUsers)
-	onlineUsers = container.NewBorder(onlineUsers, nil, nil, sideLine)
+	onlineUsers := container.NewVBox()
 
 	//add a goroutine here to read ExchangeAPI for live users and populate with labels
 	go refreshUsers(logger, onlineUsers)
@@ -286,45 +242,22 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	userList.OnSelected = func(id widget.ListItemID) {
 		targetUser = users[id]
 		newConvoWin(logger, myApp, targetUser)
-		messageEntry.Show()
-		//clear the chat when switching users
-		chatContainer.Objects = chatContainer.Objects[:0]
-		messageLabel.Hide()
-		chatContainer.Refresh()
 		incomingMsgChan <- Post{Msg: users[id], User: "Sending messages to", ok: true}
 		postStashedMessages()
-		messageEntry.SetText("")
 	}
 
-	//actually add the users to the panel
-	onlineUsers.Add(userList)
 	//add container to hold the users list
-	onlineContainer := container.New(layout.NewHBoxLayout(), onlineUsers)
-
-	//define the sendbutton and OnClickFunc
-	sendButton := widget.NewButton("Send", func() { sendMsg(messageEntry) })
-	//turn the send button blue
-	sendButton.Importance = widget.HighImportance
-
-	//define progress bar to use when sending a message
-	infinite := widget.NewProgressBarInfinite()
-	buttonContainer := container.New(layout.NewVBoxLayout(), infinite)
-	buttonContainer.Add(sendButton)
-	infinite.Hide()
-
-	//define the chat clear button
-	clearButton := widget.NewButton("Clear", func() {
-		//clear chatContainer and messageEntry
-		chatContainer.Objects = chatContainer.Objects[:0]
-		chatContainer.Refresh()
-		messageEntry.SetText("")
-	})
-	clearButton.Importance = widget.DangerImportance
+	bLine2 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
+	bLine2.StrokeWidth = 2
+	onlineContainer := container.NewVBox()
+	onlineContainer.Add(onlineUsers)
 
 	//create the widget to display current user
+	userText := widget.NewLabelWithStyle("Online Users", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	myText := widget.NewLabelWithStyle("Logged in as: "+globalConfig.User, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	myText.Importance = widget.WarningImportance
 	textContainer := container.New(layout.NewCenterLayout(), myText)
+	uTextContainer := container.New(layout.NewCenterLayout(), userText)
 
 	//create proxy status widget
 	pStatus := widget.NewLabelWithStyle("Starting Proxy...", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
@@ -339,19 +272,19 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 			logger.Debug("help!")
 		}),
 		widget.NewToolbarSeparator(),
-		widget.NewToolbarAction(theme.VolumeUpIcon(), func() {
-			if volume == 0 {
-				return
-			}
-			volume += 1
-			volp.SetValue(cnv(volume))
-			logger.Debug(volume)
-		}),
 		widget.NewToolbarAction(theme.VolumeDownIcon(), func() {
 			if volume == -10 {
 				return
 			}
 			volume -= 1
+			volp.SetValue(cnv(volume))
+			logger.Debug(volume)
+		}),
+		widget.NewToolbarAction(theme.VolumeUpIcon(), func() {
+			if volume == 0 {
+				return
+			}
+			volume += 1
 			volp.SetValue(cnv(volume))
 			logger.Debug(volume)
 		}),
@@ -369,41 +302,60 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 
 	//create container to hold current user/proxy button
 	topContainer := container.NewHBox()
-	sideLine3 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
-	sideLine3.StrokeWidth = 5
-	sideLine4 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
-	sideLine4.StrokeWidth = 2
-	topContainer = container.NewBorder(nil, nil, nil, sideLine3, textContainer)
+	topContainer = container.NewBorder(nil, nil, nil, sideLine, textContainer)
 	topContainer = container.NewBorder(nil, nil, nil, pStatus, topContainer)
+	topContainer = container.NewBorder(nil, bLine2, nil, nil, topContainer)
+	topContainer = container.NewBorder(nil, uTextContainer, nil, nil, topContainer)
 
-	// Create a container for the message entry container, clear button widget and send button container
-	sendContainer := container.NewBorder(clearButton, buttonContainer, nil, nil, messageEntry)
-
-	// Create a vertical split container for chat and input
-	splitContainer := container.NewVSplit(scrollContainer, sendContainer)
-	splitContainer.Offset = .7
 	//Create borders for buttons
-	finalContainer := container.NewBorder(topLine, nil, onlineContainer, nil, splitContainer)
+	finalContainer := container.NewBorder(bLine, nil, nil, nil, onlineContainer)
 	finalContainer = container.NewBorder(topContainer, nil, nil, nil, finalContainer)
-	finalContainer = container.NewBorder(topLine2, nil, nil, nil, finalContainer)
+	finalContainer = container.NewBorder(topLine, nil, nil, nil, finalContainer)
 	finalContainer = container.NewBorder(toolBarContainer, nil, nil, nil, finalContainer)
 
-	//replace button in buttonContainer with progressBar when firing message
 	//https://developer.fyne.io/widget/progressbar
 	//listen for incoming messages here
 	go listen(logger)
-	go send(logger, sendButton, infinite, messageEntry)
-	go post(chatContainer)
 
 	myWindow.SetContent(finalContainer)
-	myWindow.Resize(fyne.NewSize(600, 800))
+	myWindow.Resize(fyne.NewSize(200, 800))
 	myWindow.Show()
 }
 
 func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string) {
 	myWindow := myApp.NewWindow(user)
-	label := widget.NewLabel("Text")
-	myWindow.SetContent(label)
+
+	// Create a scrollable container for chat messages
+	chatContainer := container.NewVBox()
+	scrollContainer := container.NewVScroll(chatContainer)
+	scrollContainer.Resize(fyne.NewSize(500, 0))
+
+	// Create an entry field for typing messages
+	messageEntry := widget.NewMultiLineEntry()
+	messageEntry.SetPlaceHolder("Type your message -- Shift + Enter to send")
+	messageEntry.Wrapping = fyne.TextWrapBreak
+
+        //WONT TRAP ENTER to send the message if rest of the gui in focus
+	//https://github.com/fyne-io/fyne/issues/1683#issuecomment-755390386
+	//this sends a message if shift+enter is pressed in focus
+	//apparently people like this behaviour /shrug
+	messageEntry.OnSubmitted = func(input string) {
+		sendMsg(messageEntry)
+
+	}
+
+	//define the sendbutton and OnClickFunc
+	sendButton := widget.NewButton("Send", func() { sendMsg(messageEntry) })
+	//turn the send button blue
+	sendButton.Importance = widget.HighImportance
+
+	// Create a container for the message entry container, clear button widget and send button container
+	sendContainer := container.NewBorder(chatContainer, sendButton, nil, nil, messageEntry)
+
+	go send(logger, messageEntry)
+	go post(chatContainer)
+
+	myWindow.SetContent(sendContainer)
 	myWindow.Show()
 }
 
