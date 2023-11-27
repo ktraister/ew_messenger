@@ -186,6 +186,27 @@ func refreshUsers(logger *logrus.Logger, container *fyne.Container) {
 	}
 }
 
+func phoneHome(logger *logrus.Logger) {
+        user := fmt.Sprintf("%s_ping", globalConfig.User)
+        cm, err := exConnect(logger, globalConfig, user)
+        if err != nil {
+        } 
+	defer cm.Close()
+	for {
+	        //send ping every 4 seconds
+		outgoing := &Message{Type: "ping",
+			User: globalConfig.User,
+			From: globalConfig.User,
+			Msg:  "ping",
+		} 
+		_, err := json.Marshal(outgoing)
+		if err != nil {
+			logger.Error(err)
+		}   
+		time.Sleep(4 * time.Second)
+	}
+}
+
 func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	// Create a scrollable container for chat messages
 	chatContainer := container.NewVBox()
@@ -371,6 +392,7 @@ func configureGUI(myWindow fyne.Window, logger *logrus.Logger) {
 	//replace button in buttonContainer with progressBar when firing message
 	//https://developer.fyne.io/widget/progressbar
 	//listen for incoming messages here
+	go phoneHome(logger)
 	go listen(logger)
 	go send(logger, sendButton, infinite, messageEntry)
 	go post(chatContainer)
