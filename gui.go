@@ -14,6 +14,8 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/sirupsen/logrus"
+	"github.com/google/uuid"
+	"golang.org/x/sync/syncmap"
 	"image/color"
 	"net/http"
 	"strings"
@@ -28,8 +30,9 @@ import (
 
 var users = []string{}
 var targetUser = ""
-var stashedMessages = []Post{}
 var globalConfig Configurations
+var stashedMessages = syncmap.Map{}
+var chanMap = syncmap.Map{}
 
 // okay you can optimize it
 func cnv(input float64) float64 {
@@ -72,28 +75,71 @@ func checkCreds() (bool, string) {
 	return true, ""
 }
 
-func postStashedMessages() {
-	for index, message := range stashedMessages {
-		if message.User == targetUser {
-			incomingMsgChan <- message
-			plusOne := index + 1
-			//index error here b/c of slice length
-			if len(stashedMessages) >= 2 {
-				stashedMessages = append(stashedMessages[:index], stashedMessages[plusOne:]...)
-			} else {
-				stashedMessages = []Post{}
-			}
+// this function will route messages from incoming to correct chan
+func msgRouter(logger *logrus.Logger) {
+	for {
+		message := <-incomingMsgChan
+		//route the message
+		v, ok := chanMap.Load(message.From)
+		if !ok {
+		        //stash the message 
+			logger.Debug("Stashing msg ", message)
+			stashedMessages.Store(uuid.New().String(), message)
+			continue
 		}
+		logger.Debug("Posting message ", message)
+		ch := v.(chan Post)
+		ch <- message
 	}
 }
 
-func messageStashed(user string) bool {
-	for _, message := range stashedMessages {
-		if message.User == user {
-			return true
+func postStashedMessages(targetUser string) {
+        stashedMessages.Range(func(key, value interface{}) bool {
+	    // cast value to correct format
+	    msg, ok := value.(Post)
+	    if !ok {
+		// this will break iteration
+		return false
+	    }
+
+	    if msg.From == targetUser{ 
+		ch, ok := chanMap.Load(msg.From)
+		if !ok {
+		    return false
 		}
+		channel := ch.(chan Post)
+		//send and remove
+		channel <- msg
+                stashedMessages.Delete(key)
+            }
+
+	    // this will continue iterating
+	    return true
+	})	
+}
+
+//if we don't have a chan, return false
+func messageStashed(user string) bool {
+	_, ok := chanMap.Load(user)
+	if !ok {
+	        flag := false 
+	        //we dont have a chan, therefor we need to check
+	        stashedMessages.Range(func(key, value interface{}) bool {
+		    msg, _ := value.(Post)
+		    if msg.From == user {
+			flag = true
+			return false
+	            }
+		    // this will continue iterating
+		    return true
+		})	
+                if flag {
+		    return true
+                } else {
+		    return false
+                }
 	}
-	return false
+        return false
 }
 
 // this thread should just read HELO and pass off to another thread
@@ -138,12 +184,12 @@ func sendMsg(messageEntry *widget.Entry) {
 	if message != "" {
 		//check, spelled like it sounds
 		if targetUser == globalConfig.User {
-			incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", User: "SYSTEM", ok: false}
+			incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", From: "SYSTEM",  To: "SYSTEM", ok: false}
 			return
 		}
 
 		//drop the messsage on the outgoing channel
-		outgoingMsgChan <- Post{Msg: message, User: targetUser, ok: true}
+		outgoingMsgChan <- Post{Msg: message, To: targetUser, From: globalConfig.User, ok: true}
 
 		// Clear the message entry field after sending
 		messageEntry.SetText("")
@@ -159,21 +205,17 @@ func send(logger *logrus.Logger, textBox *widget.Entry) {
 		ok := ew_client(logger, globalConfig, message)
 
 		//post our sent message
-		incomingMsgChan <- Post{Msg: message.Msg, User: globalConfig.User, ok: ok}
+		incomingMsgChan <- Post{Msg: message.Msg, To: message.To, From: globalConfig.User, ok: ok}
 	}
 }
 
-func post(container *fyne.Container) {
+func post(container *fyne.Container, userChan chan Post) {
 	for {
-		message := <-incomingMsgChan
-		if targetUser != message.User && globalConfig.User != message.User {
-			//we're not focused on the user the message is from
-			//stash the message for now
-			stashedMessages = append(stashedMessages, message)
-		} else if message.ok {
-			messageLabel := widget.NewLabelWithStyle(fmt.Sprintf("%s: %s", message.User, message.Msg), fyne.TextAlignTrailing, fyne.TextStyle{Bold: false})
-			if message.User == globalConfig.User {
-				messageLabel = widget.NewLabelWithStyle(fmt.Sprintf("%s: %s", message.User, message.Msg), fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+		message := <-userChan
+		if message.ok {
+			messageLabel := widget.NewLabelWithStyle(fmt.Sprintf("%s: %s", message.From, message.Msg), fyne.TextAlignTrailing, fyne.TextStyle{Bold: false})
+			if message.From == globalConfig.User {
+				messageLabel = widget.NewLabelWithStyle(fmt.Sprintf("%s: %s", message.From, message.Msg), fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
 			}
 			messageLabel.Wrapping = fyne.TextWrapBreak
 			container.Add(messageLabel)
@@ -215,6 +257,9 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	//add a goroutine here to read ExchangeAPI for live users and populate with labels
 	go refreshUsers(logger, onlineUsers)
 
+	//goroutine to route messages
+	go msgRouter(logger)
+
 	//build our user list
 	userList := widget.NewList(
 		//length
@@ -240,9 +285,21 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 		})
 	userList.OnSelected = func(id widget.ListItemID) {
 		targetUser = users[id]
-		newConvoWin(logger, myApp, targetUser)
-		postStashedMessages()
+		//create the new chan for the user here if not exists
+		ch, ok := chanMap.Load(users[id])
+		if !ok {
+		    ch := make(chan Post)
+		    chanMap.Store(users[id], ch)
+		    newConvoWin(logger, myApp, targetUser, ch)
+		    postStashedMessages(users[id])
+		    return
+	        }
+		channel := ch.(chan Post)
+		newConvoWin(logger, myApp, targetUser, channel)
+		postStashedMessages(users[id])
 	}
+
+	//userList should close channel onclosed
 
 	onlineUsers.Add(userList)
 
@@ -321,7 +378,7 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	myWindow.Show()
 }
 
-func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string) {
+func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan chan Post) {
 	myWindow := myApp.NewWindow(user)
 
 	// Create a scrollable container for chat messages
@@ -353,7 +410,7 @@ func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string) {
 	sendContainer := container.NewBorder(nil, sendButton, nil, nil, msgContainer)
 
 	go send(logger, messageEntry)
-	go post(chatContainer)
+	go post(chatContainer, userChan)
 
 	myWindow.SetContent(sendContainer)
 	myWindow.Resize(fyne.NewSize(350, 450))

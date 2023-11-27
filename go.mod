@@ -5,10 +5,12 @@ go 1.18
 require (
 	fyne.io/fyne/v2 v2.4.1
 	github.com/faiface/beep v1.1.0
+	github.com/google/uuid v1.1.2
 	github.com/gorilla/websocket v1.5.1
 	github.com/sirupsen/logrus v1.9.3
 	go.dedis.ch/kyber/v3 v3.1.0
 	golang.org/x/crypto v0.14.0
+	golang.org/x/sync v0.1.0
 )
 
 require (
