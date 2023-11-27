@@ -294,22 +294,19 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 			}
 		})
 	userList.OnSelected = func(id widget.ListItemID) {
-		targetUser = users[id]
+		//dont show as selected
+		userList.UnselectAll()
+
 		//create the new chan for the user here if not exists
-		ch, ok := chanMap.Load(users[id])
-		if !ok {
-			ch := make(chan Post)
-			chanMap.Store(users[id], ch)
-			newConvoWin(logger, myApp, targetUser, ch)
-			postStashedMessages(users[id])
+		_, ok := chanMap.Load(users[id])
+		if ok {
 			return
 		}
-		channel := ch.(chan Post)
-		newConvoWin(logger, myApp, targetUser, channel)
+		ch := make(chan Post)
+		chanMap.Store(users[id], ch)
+		newConvoWin(logger, myApp, users[id], ch)
 		postStashedMessages(users[id])
 	}
-
-	//userList should close channel onclosed
 
 	onlineUsers.Add(userList)
 
@@ -421,6 +418,12 @@ func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan ch
 
 	go send(logger, messageEntry)
 	go post(chatContainer, userChan)
+
+	//close the channel when the window is closed
+	myWindow.SetOnClosed(func() {
+		close(userChan)
+		chanMap.Delete(user)
+	})
 
 	myWindow.SetContent(sendContainer)
 	myWindow.Resize(fyne.NewSize(350, 450))
