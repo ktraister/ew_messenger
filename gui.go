@@ -13,8 +13,8 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/sirupsen/logrus"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/syncmap"
 	"image/color"
 	"net/http"
@@ -80,9 +80,19 @@ func msgRouter(logger *logrus.Logger) {
 	for {
 		message := <-incomingMsgChan
 		//route the message
-		v, ok := chanMap.Load(message.From)
+		toFlag := false
+		fromFlag := false
+		var v interface{}
+		v, ok := chanMap.Load(message.To)
 		if !ok {
-		        //stash the message 
+			toFlag = true
+			v, ok = chanMap.Load(message.From)
+			if !ok {
+				fromFlag = true
+			}
+		}
+		if toFlag && fromFlag {
+			//stash the message
 			logger.Debug("Stashing msg ", message)
 			stashedMessages.Store(uuid.New().String(), message)
 			continue
@@ -94,52 +104,52 @@ func msgRouter(logger *logrus.Logger) {
 }
 
 func postStashedMessages(targetUser string) {
-        stashedMessages.Range(func(key, value interface{}) bool {
-	    // cast value to correct format
-	    msg, ok := value.(Post)
-	    if !ok {
-		// this will break iteration
-		return false
-	    }
-
-	    if msg.From == targetUser{ 
-		ch, ok := chanMap.Load(msg.From)
+	stashedMessages.Range(func(key, value interface{}) bool {
+		// cast value to correct format
+		msg, ok := value.(Post)
 		if !ok {
-		    return false
+			// this will break iteration
+			return false
 		}
-		channel := ch.(chan Post)
-		//send and remove
-		channel <- msg
-                stashedMessages.Delete(key)
-            }
 
-	    // this will continue iterating
-	    return true
-	})	
+		if msg.From == targetUser {
+			ch, ok := chanMap.Load(msg.From)
+			if !ok {
+				return false
+			}
+			channel := ch.(chan Post)
+			//send and remove
+			channel <- msg
+			stashedMessages.Delete(key)
+		}
+
+		// this will continue iterating
+		return true
+	})
 }
 
-//if we don't have a chan, return false
+// if we don't have a chan, return false
 func messageStashed(user string) bool {
 	_, ok := chanMap.Load(user)
 	if !ok {
-	        flag := false 
-	        //we dont have a chan, therefor we need to check
-	        stashedMessages.Range(func(key, value interface{}) bool {
-		    msg, _ := value.(Post)
-		    if msg.From == user {
-			flag = true
+		flag := false
+		//we dont have a chan, therefor we need to check
+		stashedMessages.Range(func(key, value interface{}) bool {
+			msg, _ := value.(Post)
+			if msg.From == user {
+				flag = true
+				return false
+			}
+			// this will continue iterating
+			return true
+		})
+		if flag {
+			return true
+		} else {
 			return false
-	            }
-		    // this will continue iterating
-		    return true
-		})	
-                if flag {
-		    return true
-                } else {
-		    return false
-                }
+		}
 	}
-        return false
+	return false
 }
 
 // this thread should just read HELO and pass off to another thread
@@ -184,7 +194,7 @@ func sendMsg(messageEntry *widget.Entry) {
 	if message != "" {
 		//check, spelled like it sounds
 		if targetUser == globalConfig.User {
-			incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", From: "SYSTEM",  To: "SYSTEM", ok: false}
+			incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", From: "SYSTEM", To: "SYSTEM", ok: false}
 			return
 		}
 
@@ -288,12 +298,12 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 		//create the new chan for the user here if not exists
 		ch, ok := chanMap.Load(users[id])
 		if !ok {
-		    ch := make(chan Post)
-		    chanMap.Store(users[id], ch)
-		    newConvoWin(logger, myApp, targetUser, ch)
-		    postStashedMessages(users[id])
-		    return
-	        }
+			ch := make(chan Post)
+			chanMap.Store(users[id], ch)
+			newConvoWin(logger, myApp, targetUser, ch)
+			postStashedMessages(users[id])
+			return
+		}
 		channel := ch.(chan Post)
 		newConvoWin(logger, myApp, targetUser, channel)
 		postStashedMessages(users[id])
