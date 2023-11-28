@@ -54,3 +54,55 @@ func refreshEmojis(input string) string {
 	}
 	return output
 }
+
+type URI struct {
+    val string
+}
+
+func (re URI) Authority() string {
+    val := strings.Split(re.val, "//")[1]
+    val = strings.Split(val, "/")[0]
+    return val
+}
+
+func (re URI) Extension() string {
+    return "Extension"
+}
+
+func (re URI) Fragment() string {
+    if !strings.Contains(re.val, "#") {
+	return ""
+    }
+    return strings.Split(re.val, "#")[1]
+
+}
+
+func (re URI) MimeType() string {
+    return "MimeType"
+}
+
+func (re URI) Name() string {
+    return "Name"
+}
+
+func (re URI) Path() string {
+    val := strings.Split(re.val, "/")[3:]
+    val2 := strings.Join(val, "")
+    return "/" + val2
+}
+
+func (re URI) String() string {
+    return "String"
+}
+
+func (re URI) Query() string {
+    if !strings.Contains(re.val, "?") {
+	return ""
+    }
+    return strings.Split(re.val, "?")[1]
+}
+
+func (re URI) Scheme() string {
+    return strings.Split(re.val, ":")[0]
+}
+

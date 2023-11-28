@@ -230,10 +230,24 @@ func post(cont *fyne.Container, userChan chan Post) {
 		if message.ok {
 			link, _ := regexp.MatchString(`^http.:\/\/.*\..*\/`, message.Msg)
 			if link {
-				url := strings.Split(message.Msg, " ")[0]
-				fmt.Println(url)
-				parsedURL := new(fyne.URI)
-				gif, err := xwidget.NewAnimatedGif(*parsedURL)
+				rawURL := strings.Split(message.Msg, " ")[0]
+				fmt.Println(rawURL)
+
+				//we need to get url into ParsedURL
+				/*
+				parsedURL := &fyne.URI{
+				        Scheme: "https",
+					Host:   "example.com",
+					Path:   "/path/to/resource",
+                                }
+				//parsedURL := new(fyne.URI)
+				parsedURL.Authority() = func() string {return message.Msg}
+				//str.Set(url)
+				*/
+				// Parse the URL
+				parsedURL := URI{rawURL}
+
+				gif, err := xwidget.NewAnimatedGif(parsedURL)
 				if err != nil {
 					fmt.Println(err)
 				}
