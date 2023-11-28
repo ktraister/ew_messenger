@@ -437,13 +437,18 @@ func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan ch
 	messageEntry.SetPlaceHolder("Type your message -- Shift + Enter to send")
 	messageEntry.Wrapping = fyne.TextWrapWord
 
+	//replace input with emojis
+	messageEntry.OnChanged = func(input string) {
+	        messageEntry.Text = refreshEmojis(input)
+		messageEntry.Refresh()
+	}
+
 	//WONT TRAP ENTER to send the message if rest of the gui in focus
 	//https://github.com/fyne-io/fyne/issues/1683#issuecomment-755390386
 	//this sends a message if shift+enter is pressed in focus
 	//apparently people like this behaviour /shrug
 	messageEntry.OnSubmitted = func(input string) {
 		sendMsg(messageEntry)
-
 	}
 
 	//define the sendbutton and OnClickFunc
@@ -451,10 +456,14 @@ func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan ch
 	//turn the send button blue
 	sendButton.Importance = widget.HighImportance
 
+	//emoji button
+	emojiButton := widget.NewButton("Emojis", func() { emojiKeyboard(myApp, messageEntry) })
+
 	// Create a container for the message entry container, clear button widget and send button container
+	tmpContainer := container.NewBorder(nil, nil, nil, emojiButton, sendButton)
 	msgContainer := container.NewVSplit(scrollContainer, messageEntry)
 	msgContainer.Offset = .75
-	sendContainer := container.NewBorder(nil, sendButton, nil, nil, msgContainer)
+	sendContainer := container.NewBorder(nil, tmpContainer, nil, nil, msgContainer)
 
 	go send(logger, messageEntry)
 	go post(chatContainer, userChan)
