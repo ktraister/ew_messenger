@@ -13,11 +13,13 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	xwidget "fyne.io/x/fyne/widget"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/syncmap"
 	"image/color"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -226,15 +228,27 @@ func post(cont *fyne.Container, userChan chan Post) {
 		line.StrokeWidth = 0.2
 		message := <-userChan
 		if message.ok {
+			link, _ := regexp.MatchString(`^http.:\/\/.*\..*\/`, message.Msg)
+			if link {
+				url := strings.Split(message.Msg, " ")[0]
+				fmt.Println(url)
+				parsedURL := new(fyne.URI)
+				gif, err := xwidget.NewAnimatedGif(*parsedURL)
+				if err != nil {
+					fmt.Println(err)
+				}
+				cont.Add(gif)
+			}
 			messageLabel := widget.NewLabelWithStyle(fmt.Sprintf("%s", message.Msg), fyne.TextAlignTrailing, fyne.TextStyle{})
 			if message.From == globalConfig.User {
 				messageLabel = widget.NewLabelWithStyle(fmt.Sprintf("%s", message.Msg), fyne.TextAlignLeading, fyne.TextStyle{})
 			}
 			messageLabel.Wrapping = fyne.TextWrapWord
- 		        cont.Add(messageLabel)
+			cont.Add(messageLabel)
 			cont.Add(line)
 		} else {
 			messageLabel := widget.NewLabel(fmt.Sprintf("ERROR SENDING MSG %s", message.Msg))
+			messageLabel.Wrapping = fyne.TextWrapWord
 			messageLabel.Importance = widget.DangerImportance
 			cont.Add(messageLabel)
 			cont.Add(line)
@@ -439,7 +453,7 @@ func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan ch
 
 	//replace input with emojis
 	messageEntry.OnChanged = func(input string) {
-	        messageEntry.Text = refreshEmojis(input)
+		messageEntry.Text = refreshEmojis(input)
 		messageEntry.Refresh()
 	}
 

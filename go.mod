@@ -4,13 +4,14 @@ go 1.18
 
 require (
 	fyne.io/fyne/v2 v2.4.1
+	fyne.io/x/fyne v0.0.0-20231020065621-89b4a4aea27d
 	github.com/faiface/beep v1.1.0
 	github.com/google/uuid v1.1.2
 	github.com/gorilla/websocket v1.5.1
 	github.com/sirupsen/logrus v1.9.3
 	go.dedis.ch/kyber/v3 v3.1.0
 	golang.org/x/crypto v0.14.0
-	golang.org/x/sync v0.1.0
+	golang.org/x/sync v0.3.0
 )
 
 require (
@@ -31,6 +32,7 @@ require (
 	github.com/hajimehoshi/oto v1.0.1 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/kr/pretty v0.3.1 // indirect
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c // indirect
