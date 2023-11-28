@@ -113,7 +113,7 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 	}
 
 	//logger.Debug("Incoming msg: ", dat["msg"].(string))
-	incomingMsg := Post{User: dat["user"].(string), Msg: string(plainText), ok: true}
+	incomingMsg := Post{From: dat["user"].(string), To: globalConfig.User, Msg: string(plainText), ok: true}
 	incomingMsgChan <- incomingMsg
 	playSound(logger)
 }

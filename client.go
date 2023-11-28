@@ -12,7 +12,8 @@ import (
 )
 
 type Post struct {
-	User string `json:"user"`
+	From string `json:"from"`
+	To   string `json:"to"`
 	Msg  string `json:"msg"`
 	ok   bool   `json:"ok"`
 }
@@ -41,7 +42,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	defer cm.Close()
 	passwd := configuration.Passwd
 
-	targetUser := fmt.Sprintf("%s_%s", string(message.User), "server")
+	targetUser := fmt.Sprintf("%s_%s", string(message.To), "server")
 
 	logger.Debug(fmt.Sprintf("Sending msg %s from user %s to user %s!!", message.Msg, user, targetUser))
 
