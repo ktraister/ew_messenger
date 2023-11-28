@@ -219,20 +219,24 @@ func send(logger *logrus.Logger, textBox *widget.Entry) {
 	}
 }
 
-func post(container *fyne.Container, userChan chan Post) {
+// okay fuck it we're calling the text boxes good for now
+func post(cont *fyne.Container, userChan chan Post) {
 	for {
+		line := canvas.NewLine(color.RGBA{255, 255, 255, 20})
+		line.StrokeWidth = 0.2
 		message := <-userChan
 		if message.ok {
-			messageLabel := widget.NewLabelWithStyle(fmt.Sprintf("%s: %s", message.From, message.Msg), fyne.TextAlignTrailing, fyne.TextStyle{Bold: false})
+			messageLabel := widget.NewLabelWithStyle(fmt.Sprintf("%s", message.Msg), fyne.TextAlignTrailing, fyne.TextStyle{})
 			if message.From == globalConfig.User {
-				messageLabel = widget.NewLabelWithStyle(fmt.Sprintf("%s: %s", message.From, message.Msg), fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+				messageLabel = widget.NewLabelWithStyle(fmt.Sprintf("%s", message.Msg), fyne.TextAlignLeading, fyne.TextStyle{})
 			}
-			messageLabel.Wrapping = fyne.TextWrapBreak
-			container.Add(messageLabel)
+			messageLabel.Wrapping = fyne.TextWrapWord
+			cont.Add(line)
 		} else {
 			messageLabel := widget.NewLabel(fmt.Sprintf("ERROR SENDING MSG %s", message.Msg))
 			messageLabel.Importance = widget.DangerImportance
-			container.Add(messageLabel)
+			cont.Add(messageLabel)
+			cont.Add(line)
 		}
 	}
 }
@@ -294,8 +298,8 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 			}
 		})
 	userList.OnSelected = func(id widget.ListItemID) {
-	        //setting global scoped var 
-	        targetUser = users[id]
+		//setting global scoped var
+		targetUser = users[id]
 		//dont show as selected
 		userList.UnselectAll()
 
@@ -382,8 +386,41 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	//listen for incoming messages here
 	go listen(logger)
 
+	//use the below code to set up sound/language management and streamline
+	/*
+		// Create a simple menu structure
+		mainMenu := fyne.NewMainMenu(
+			fyne.NewMenu("File",
+				fyne.NewMenuItem("New", func() {
+					// Handle "New" action
+				}),
+				fyne.NewMenuItem("Open", func() {
+					// Handle "Open" action
+				}),
+				fyne.NewMenuItem("Save", func() {
+					// Handle "Save" action
+				}),
+				fyne.NewMenuItem("Exit", func() {
+					myApp.Quit()
+				}),
+			),
+			fyne.NewMenu("Edit",
+				fyne.NewMenuItem("Cut", func() {
+					// Handle "Cut" action
+				}),
+				fyne.NewMenuItem("Copy", func() {
+					// Handle "Copy" action
+				}),
+				fyne.NewMenuItem("Paste", func() {
+					// Handle "Paste" action
+				}),
+			),
+		)
+		myWindow.SetMainMenu(mainMenu)
+	*/
+
 	myWindow.SetContent(finalContainer)
-	myWindow.Resize(fyne.NewSize(200, 800))
+	myWindow.Resize(fyne.NewSize(200, 600))
 	myWindow.Show()
 }
 
