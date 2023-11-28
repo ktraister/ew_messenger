@@ -294,18 +294,20 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 			}
 		})
 	userList.OnSelected = func(id widget.ListItemID) {
+	        //setting global scoped var 
+	        targetUser = users[id]
 		//dont show as selected
 		userList.UnselectAll()
 
 		//create the new chan for the user here if not exists
-		_, ok := chanMap.Load(users[id])
+		_, ok := chanMap.Load(targetUser)
 		if ok {
 			return
 		}
 		ch := make(chan Post)
-		chanMap.Store(users[id], ch)
-		newConvoWin(logger, myApp, users[id], ch)
-		postStashedMessages(users[id])
+		chanMap.Store(targetUser, ch)
+		newConvoWin(logger, myApp, targetUser, ch)
+		postStashedMessages(targetUser)
 	}
 
 	onlineUsers.Add(userList)
