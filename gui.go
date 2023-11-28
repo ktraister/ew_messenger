@@ -229,12 +229,11 @@ func post(cont *fyne.Container, userChan chan Post) {
 		message := <-userChan
 		if message.ok {
 			//regex is misbehaving rn
-			link, err := regexp.MatchString(`^https?:\/\/.*$`, message.Msg)
-			if link {
-				u, err := url.Parse(message.Msg)
-				if err != nil {
-					panic(err)
-				}
+			link, _ := regexp.MatchString(`^http.*$`, message.Msg)
+			u, err := url.Parse(message.Msg)
+			fmt.Println(link)
+			fmt.Println(err)
+			if link && err == nil && !strings.Contains(message.Msg, " "){
 				linkLabel := widget.NewHyperlinkWithStyle(message.Msg, u, fyne.TextAlignTrailing, fyne.TextStyle{})
 				if message.From == globalConfig.User {
 					linkLabel.Alignment = fyne.TextAlignLeading
