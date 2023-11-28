@@ -231,6 +231,7 @@ func post(cont *fyne.Container, userChan chan Post) {
 				messageLabel = widget.NewLabelWithStyle(fmt.Sprintf("%s", message.Msg), fyne.TextAlignLeading, fyne.TextStyle{})
 			}
 			messageLabel.Wrapping = fyne.TextWrapWord
+ 		        cont.Add(messageLabel)
 			cont.Add(line)
 		} else {
 			messageLabel := widget.NewLabel(fmt.Sprintf("ERROR SENDING MSG %s", message.Msg))
@@ -434,7 +435,7 @@ func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan ch
 	// Create an entry field for typing messages
 	messageEntry := widget.NewMultiLineEntry()
 	messageEntry.SetPlaceHolder("Type your message -- Shift + Enter to send")
-	messageEntry.Wrapping = fyne.TextWrapBreak
+	messageEntry.Wrapping = fyne.TextWrapWord
 
 	//WONT TRAP ENTER to send the message if rest of the gui in focus
 	//https://github.com/fyne-io/fyne/issues/1683#issuecomment-755390386
