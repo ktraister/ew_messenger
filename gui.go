@@ -19,7 +19,6 @@ import (
 	"image/color"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
 )
@@ -229,18 +228,14 @@ func post(cont *fyne.Container, userChan chan Post) {
 		message := <-userChan
 		if message.ok {
 			//regex is misbehaving rn
-			link, _ := regexp.MatchString(`^http.*$`, message.Msg)
 			u, err := url.Parse(message.Msg)
-			fmt.Println(link)
-			fmt.Println(err)
-			if link && err == nil && !strings.Contains(message.Msg, " "){
+			if err == nil && (u.Scheme == "http" || u.Scheme == "https") {
 				linkLabel := widget.NewHyperlinkWithStyle(message.Msg, u, fyne.TextAlignTrailing, fyne.TextStyle{})
 				if message.From == globalConfig.User {
 					linkLabel.Alignment = fyne.TextAlignLeading
 				}
 				cont.Add(linkLabel)
 				cont.Add(line)
-				return
 			} else {
 				//plaintext
 				messageLabel := widget.NewLabelWithStyle(fmt.Sprintf("%s", message.Msg), fyne.TextAlignTrailing, fyne.TextStyle{})
