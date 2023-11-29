@@ -18,6 +18,7 @@ import (
 	"golang.org/x/sync/syncmap"
 	"image/color"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -226,13 +227,25 @@ func post(cont *fyne.Container, userChan chan Post) {
 		line.StrokeWidth = 0.2
 		message := <-userChan
 		if message.ok {
-			messageLabel := widget.NewLabelWithStyle(fmt.Sprintf("%s", message.Msg), fyne.TextAlignTrailing, fyne.TextStyle{})
-			if message.From == globalConfig.User {
-				messageLabel = widget.NewLabelWithStyle(fmt.Sprintf("%s", message.Msg), fyne.TextAlignLeading, fyne.TextStyle{})
+			//regex is misbehaving rn
+			u, err := url.Parse(message.Msg)
+			if err == nil && (u.Scheme == "http" || u.Scheme == "https") {
+				linkLabel := widget.NewHyperlinkWithStyle(message.Msg, u, fyne.TextAlignTrailing, fyne.TextStyle{})
+				if message.From == globalConfig.User {
+					linkLabel.Alignment = fyne.TextAlignLeading
+				}
+				cont.Add(linkLabel)
+				cont.Add(line)
+			} else {
+				//plaintext
+				messageLabel := widget.NewLabelWithStyle(fmt.Sprintf("%s", message.Msg), fyne.TextAlignTrailing, fyne.TextStyle{})
+				if message.From == globalConfig.User {
+					messageLabel.Alignment = fyne.TextAlignLeading
+				}
+				messageLabel.Wrapping = fyne.TextWrapWord
+				cont.Add(messageLabel)
+				cont.Add(line)
 			}
-			messageLabel.Wrapping = fyne.TextWrapWord
- 		        cont.Add(messageLabel)
-			cont.Add(line)
 		} else {
 			messageLabel := widget.NewLabel(fmt.Sprintf("ERROR SENDING MSG %s", message.Msg))
 			messageLabel.Importance = widget.DangerImportance
@@ -439,7 +452,7 @@ func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan ch
 
 	//replace input with emojis
 	messageEntry.OnChanged = func(input string) {
-	        messageEntry.Text = refreshEmojis(input)
+		messageEntry.Text = refreshEmojis(input)
 		messageEntry.Refresh()
 	}
 
