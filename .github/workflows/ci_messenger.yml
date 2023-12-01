@@ -21,7 +21,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PULL }}
 
-      - name: Go Build
+      - name: Go Build && Binary Upload
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AUTOMATION_AWS_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AUTOMATION_AWS_SECRET_KEY }}
+          AWS_DEFAULT_REGION: 'us-east-1'
         run: | 
           #install fyne-cross
           git clone https://github.com/fyne-io/fyne-cross.git
@@ -43,6 +47,8 @@ jobs:
           unzip ./fyne-cross/dist/windows-amd64/ew_messenger.exe.zip -d .
           tar -xf ./fyne-cross/dist/linux-amd64/ew_messenger.tar.xz --directory .
           mv ./usr/local/bin/ew_messenger .
+
+          aws s3 cp ew_messenger* s3://endless-waltz-xyz-downloads
 
           #ugh why is mac such a pain in the ass!!
           #fyne-cross darwin-sdk-extract --xcode-path /path/to/Command_Line_Tools_for_Xcode_12.5.dmg
