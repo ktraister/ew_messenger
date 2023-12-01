@@ -151,5 +151,10 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	}
 
 	err = cm.Send(b)
+	if err != nil {
+		logger.Error(err)
+		return false
+	}
+
 	return true
 }

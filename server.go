@@ -36,7 +36,7 @@ func uid() string {
 }
 
 // Change handleConnection to act as the "server side" in this transaction
-// we'll pass around the websocket to accomplish this
+// we'll create a new websocket to accomplish this
 func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configuration Configurations) {
 	//the entire connection will be encrypted using a single kyber key per conn
 	suite := edwards25519.NewBlakeSHA256Ed25519()
@@ -63,6 +63,8 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 		logger.Error(err)
 		return
 	}
+	defer cm.Close()
+
 	logger.Debug("Connected to exchange with user ", localUser)
 	logger.Debug("sending base64 pubkey ", qPubKeyStr)
 
