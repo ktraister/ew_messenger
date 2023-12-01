@@ -48,7 +48,8 @@ jobs:
           tar -xf ./fyne-cross/dist/linux-amd64/ew_messenger.tar.xz --directory .
           mv ./usr/local/bin/ew_messenger .
 
-          aws s3 cp ew_messenger* s3://endless-waltz-xyz-downloads
+          aws s3 cp ew_messenger s3://endless-waltz-xyz-downloads
+          aws s3 cp ew_messenger.exe s3://endless-waltz-xyz-downloads
 
           #ugh why is mac such a pain in the ass!!
           #fyne-cross darwin-sdk-extract --xcode-path /path/to/Command_Line_Tools_for_Xcode_12.5.dmg
