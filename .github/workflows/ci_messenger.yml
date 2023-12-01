@@ -42,7 +42,7 @@ jobs:
           #extract binaries to an easier spot to work with
           unzip ./fyne-cross/dist/windows-amd64/ew_messenger.exe.zip -d .
           tar -xf ./fyne-cross/dist/linux-amd64/ew_messenger.tar.xz --directory .
-          mv usr/local/bin/ew_messenger .
+          mv ./usr/local/bin/ew_messenger .
 
           #ugh why is mac such a pain in the ass!!
           #fyne-cross darwin-sdk-extract --xcode-path /path/to/Command_Line_Tools_for_Xcode_12.5.dmg
