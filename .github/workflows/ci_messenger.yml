@@ -39,9 +39,10 @@ jobs:
           /tmp/fyne-cross linux -app-id EW.Messenger -image ghcr.io/ktraister/fyne_builder_nix:latest
           #fyne-cross freebsd -app-id EW.Messenger -env 'PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/include' -env 'C_INCLUDE_PATH=$C_INCLUDE_PATH:/usr/include:/usr/include/x86_64-linux-gnu' -image ghcr.io/ktraister/fyne_builder_bsd:latest
 
-          #move the binaries to an easier spot to work with
-          mv ./fyne-cross/dist/windows-amd64/ew_messenger.exe.zip ./win_ew_messenger.tar.xz
-          mv ./fyne-cross/dist/linux-amd64/ew_messenger.tar.xz ./nix_ew_messenger.tar.xz
+          #extract binaries to an easier spot to work with
+          unzip ./fyne-cross/dist/windows-amd64/ew_messenger.exe.zip -d .
+          tar -xf ./fyne-cross/dist/linux-amd64/ew_messenger.tar.xz --directory .
+          mv ./usr/local/bin/ew_messenger .
 
           #ugh why is mac such a pain in the ass!!
           #fyne-cross darwin-sdk-extract --xcode-path /path/to/Command_Line_Tools_for_Xcode_12.5.dmg
@@ -51,13 +52,13 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           generateReleaseNotes: true
-          artifacts: "*.tar.xz"
+          artifacts: "ew_messenger*"
           token: ${{secrets.RELEASE_TOKEN}}
 
       - name: Release for public repo
         uses: ncipollo/release-action@v1
         with:
           generateReleaseNotes: true
-          artifacts: "*.tar.xz"
+          artifacts: "ew_messenger*"
           token: ${{secrets.RELEASE_TOKEN}}
           repo: endless_waltz_public
