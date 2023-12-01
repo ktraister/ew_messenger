@@ -21,7 +21,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PULL }}
 
-      - name: Go Build
+      - name: Go Build && Binary Upload
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AUTOMATION_AWS_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AUTOMATION_AWS_SECRET_KEY }}
