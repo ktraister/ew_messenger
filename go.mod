@@ -3,7 +3,7 @@ module github.com/ktraister/ew_messenger
 go 1.18
 
 require (
-	fyne.io/fyne/v2 v2.4.1
+	fyne.io/fyne/v2 v2.4.2
 	github.com/faiface/beep v1.1.0
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/websocket v1.5.1
@@ -14,7 +14,7 @@ require (
 )
 
 require (
-	fyne.io/systray v1.10.1-0.20230722100817-88df1e0ffa9a // indirect
+	fyne.io/systray v1.10.1-0.20231115130155-104f5ef7839e // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fredbi/uri v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
