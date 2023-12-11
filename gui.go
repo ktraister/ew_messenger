@@ -336,7 +336,7 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 
 	//create the widget to display current user
 	userText := widget.NewLabelWithStyle("Online Users", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	myText := widget.NewLabelWithStyle("Logged in as: "+globalConfig.User, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	myText := widget.NewLabelWithStyle(globalConfig.User, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	myText.Importance = widget.WarningImportance
 	textContainer := container.New(layout.NewCenterLayout(), myText)
 	uTextContainer := container.New(layout.NewCenterLayout(), userText)
@@ -373,12 +373,12 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 		widget.NewToolbarSpacer(),
 	)
 	//alert selection
-	alerts := []string{"warning_beep", "navi_listen"}
+	alerts := []string{"warning_beep", "navi_listen", "off"}
 	alertSelect := widget.NewSelect(alerts, func(input string) {
 		logger.Debug(input)
 		selectedSound = input
 	})
-	alertSelect.SetSelected("warning_beep")
+	alertSelect.SetSelected("navi_listen")
 	toolBarContainer := container.NewBorder(nil, nil, nil, volp, toolbar)
 	toolBarContainer = container.NewBorder(nil, nil, nil, alertSelect, toolBarContainer)
 
@@ -399,39 +399,6 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	//https://developer.fyne.io/widget/progressbar
 	//listen for incoming messages here
 	go listen(logger)
-
-	//use the below code to set up sound/language management and streamline
-	/*
-		// Create a simple menu structure
-		mainMenu := fyne.NewMainMenu(
-			fyne.NewMenu("File",
-				fyne.NewMenuItem("New", func() {
-					// Handle "New" action
-				}),
-				fyne.NewMenuItem("Open", func() {
-					// Handle "Open" action
-				}),
-				fyne.NewMenuItem("Save", func() {
-					// Handle "Save" action
-				}),
-				fyne.NewMenuItem("Exit", func() {
-					myApp.Quit()
-				}),
-			),
-			fyne.NewMenu("Edit",
-				fyne.NewMenuItem("Cut", func() {
-					// Handle "Cut" action
-				}),
-				fyne.NewMenuItem("Copy", func() {
-					// Handle "Copy" action
-				}),
-				fyne.NewMenuItem("Paste", func() {
-					// Handle "Paste" action
-				}),
-			),
-		)
-		myWindow.SetMainMenu(mainMenu)
-	*/
 
 	myWindow.SetContent(finalContainer)
 	myWindow.Resize(fyne.NewSize(200, 600))
