@@ -17,6 +17,10 @@ var volume = float64(-5)
 var selectedSound = "warning_beep"
 
 func playSound(logger *logrus.Logger) {
+	if selectedSound == "off" {
+		return
+	}
+
 	f, err := content.Open(fmt.Sprintf("audio/%s.mp3", selectedSound))
 	if err != nil {
 		logger.Error(err)
