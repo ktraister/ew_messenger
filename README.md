@@ -87,3 +87,4 @@ BSD has effectively lost the software arms race, and will one day be
 consigned to history. In the meantime, people still use it, and people still
 love it. The users of BSD may one day decide to ask for a BSD compliant
 EW Messenger, but until then, I'm not going to support it. 
+
