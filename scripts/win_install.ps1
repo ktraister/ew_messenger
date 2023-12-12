@@ -6,6 +6,13 @@ if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
     exit 1
 }
 
+# Check if file exists
+if (Test-Path "$env:TEMP\ew_messenger.zip") {
+"$env:TEMP\ew_messenger.zip"
+"$env:TEMP\ew_messenger.exe"
+"$env:TEMP\shortcuts"
+}
+
 # Download the remote installer zip
 Invoke-WebRequest -Uri "https://endless-waltz-xyz-downloads.s3.us-east-2.amazonaws.com/ew_messenger_win.zip" -OutFile "$env:TEMP\ew_messenger.zip"
 
@@ -14,10 +21,16 @@ Expand-Archive -Path "$env:TEMP\ew_messenger.zip" -DestinationPath "$env:TEMP\\"
 
 # Create the correct location
 New-Item -Path "C:\Program Files" -Name "EndlessWaltz" -ItemType "directory"
+New-Item -Path "C:\Program Files\EndlessWaltz" -Name "Icon" -ItemType "directory"
+
+# check if current files exist and remove
+if (Test-Path "$env:TEMP\ew_messenger.zip") {
+"C:\Program Files\EndlessWaltz"
+}
 
 # Copy files into the correct locations
 Move-Item -Path "$env:TEMP\ew_messenger.exe" -Destination "C:\Program Files\EndlessWaltz"
-Move-Item -Path "$env:TEMP\shortcuts\Icon.ico" -Destination "C:\Program Files\EndlessWaltz\Icon.ico"
+Move-Item -Path "$env:TEMP\shortcuts\Icon.ico" -Destination "C:\Program Files\EndlessWaltz\Icon\Icon.ico"
 
 # Loop through user profiles and copy desktop shortcut
 foreach ($userProfile in Get-WmiObject Win32_UserProfile | Where-Object { $_.Special -eq $false }) {
