@@ -1,3 +1,5 @@
+# REQUIRED -- https:/go.microsoft.com/fwlink/?LinkID=135170
+
 # Check if running as administrator
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Write-Host "Script must be run as administrator for correct installation permissions"
@@ -11,10 +13,11 @@ Invoke-WebRequest -Uri "https://endless-waltz-xyz-downloads.s3.us-east-2.amazona
 Expand-Archive -Path "$env:TEMP\ew_messenger.zip" -DestinationPath "$env:TEMP\\"
 
 # Create the correct location
+New-Item -Path "C:\Program Files" -Name "EndlessWaltz" -ItemType "directory"
 
 # Copy files into the correct locations
-Move-Item -Path "$env:TEMP\ew_messenger.exe" -Destination "C:\Program Files\endlesswaltz"
-Copy-Item -Path "$env:TEMP\shortcuts\Icon.ico" -Destination "C:\Program Files\endlesswaltz\Icon.ico"
+Move-Item -Path "$env:TEMP\ew_messenger.exe" -Destination "C:\Program Files\EndlessWaltz"
+Move-Item -Path "$env:TEMP\shortcuts\Icon.ico" -Destination "C:\Program Files\EndlessWaltz\Icon.ico"
 
 # Loop through user profiles and copy desktop shortcut
 foreach ($userProfile in Get-WmiObject Win32_UserProfile | Where-Object { $_.Special -eq $false }) {
@@ -29,6 +32,6 @@ foreach ($userProfile in Get-WmiObject Win32_UserProfile | Where-Object { $_.Spe
 
 # Modify file permissions
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-Set-ItemProperty -Path "C:\Program Files\endlesswaltz\ew_messenger.exe" -Name IsReadOnly -Value $false
-Set-ItemProperty -Path "C:\Program Files\endlesswaltz\Icon.ico" -Name IsReadOnly -Value $false
+Set-ItemProperty -Path "C:\Program Files\EndlessWaltz\ew_messenger.exe" -Name IsReadOnly -Value $false
+Set-ItemProperty -Path "C:\Program Files\EndlessWaltz\Icon.ico" -Name IsReadOnly -Value $false
 
