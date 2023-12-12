@@ -6,7 +6,7 @@ if [[ `whoami` != "root" ]]; then
 fi
 
 #grab the remote installer zip
-curl https://endless-waltz-xyz-downloads.s3.us-east-2.amazonaws.com/ew_messenger.zip -o /tmp/ew_messenger.zip
+curl https://endless-waltz-xyz-downloads.s3.us-east-2.amazonaws.com/ew_messenger_nix.zip -o /tmp/ew_messenger.zip
 
 #unzip it to /tmp
 cd /tmp && unzip ew_messenger
@@ -18,9 +18,9 @@ for i in `ls /home`; do
     if [[ -d /home/$i/Desktop ]]; then
 	dest=/home/$i/Desktop
 	cp shortcuts/endlesswaltz.desktop $dest
-	chmod a+x $dest/ew.desktop
+	chmod a+x $dest/endlesswaltz.desktop
 	if [[ `which gio` ]]; then
-	    gio set $dest/ew.desktop metadata::trusted true
+	    sudo -u $i -g $i dbus-launch gio set $dest/endlesswaltz.desktop "metadata::trusted" true
         fi
     fi
 done
