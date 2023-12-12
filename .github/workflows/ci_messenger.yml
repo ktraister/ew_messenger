@@ -27,6 +27,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AUTOMATION_AWS_SECRET_KEY }}
           AWS_DEFAULT_REGION: 'us-east-1'
         run: | 
+          startDir=`pwd`
+
           #install fyne-cross
           git clone https://github.com/fyne-io/fyne-cross.git
           cd fyne-cross
@@ -51,6 +53,10 @@ jobs:
 
           aws s3 cp ew_messenger_nix.zip s3://endless-waltz-xyz-downloads
           aws s3 cp ew_messenger_win.zip s3://endless-waltz-xyz-downloads
+
+          cd $startDir
+          aws s3 cp scripts/win_install.ps1 s3://endless-waltz-xyz-downloads
+          aws s3 cp scripts/linux_install.sh s3://endless-waltz-xyz-downloads
           
       - name: Release for private repo
         uses: ncipollo/release-action@v1
