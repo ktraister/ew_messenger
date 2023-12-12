@@ -17,7 +17,7 @@ mv Icon.png /usr/share/ew.png
 for i in `ls /home`; do 
     if [[ -d /home/$i/Desktop ]]; then
 	dest=/home/$i/Desktop
-	cp ew.desktop $dest
+	cp shortcuts/endlesswaltz.desktop $dest
 	chmod a+x $dest/ew.desktop
 	if [[ `which gio` ]]; then
 	    gio set $dest/ew.desktop metadata::trusted true
