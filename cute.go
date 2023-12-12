@@ -24,7 +24,7 @@ var emojiMap = map[string]string{
 }
 
 func emojiKeyboard(myApp fyne.App, msgEntry *widget.Entry) {
-	myWindow := myApp.NewWindow("")
+	myWindow := myApp.NewWindow("Emoji Keyboard")
 	myWindow.SetFixedSize(true)
 
 	// Create a grid for the emojis
