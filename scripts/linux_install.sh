@@ -5,18 +5,31 @@ if [[ `whoami` != "root" ]]; then
     exit 1
 fi
 
-#grab the remote installer zip
-curl https://endless-waltz-xyz-downloads.s3.us-east-2.amazonaws.com/ew_messenger_nix.zip -o /tmp/ew_messenger.zip
+cd /tmp
+if [[ -f ew_messenger.zip ]]; then
+    rm ew_messenger.zip
+fi
+if [[ -f ew_messenger ]]; then
+    rm ew_messenger
+fi
+if [[ -f Icon.png ]]; then
+    rm Icon.png
+fi
+if [[ -d shortcuts/ ]]; then
+    rm -rf shortcuts
+fi
 
+#grab the remote installer zip
+curl https://endless-waltz-xyz-downloads.s3.us-east-2.amazonaws.com/ew_messenger_nix.zip -o ew_messenger.zip
 #unzip it to /tmp
-cd /tmp && unzip ew_messenger
+unzip ew_messenger.zip
 
 #copy our files into the correct locations
 mv ew_messenger /usr/bin/ew_messenger
 mv Icon.png /usr/share/ew.png
 for i in `ls /home`; do 
-    if [[ -d /home/$i/Desktop ]]; then
-	dest=/home/$i/Desktop
+    dest=/home/$i/Desktop
+    if [[ -d $dest ]] && [[ ! -f $dest/endlesswaltz.desktop ]]; then
 	cp shortcuts/endlesswaltz.desktop $dest
 	chmod a+x $dest/endlesswaltz.desktop
 	if [[ `which gio` ]]; then
@@ -28,3 +41,7 @@ done
 #modify file permissions
 chmod +x /usr/bin/ew_messenger
 chmod a+x /usr/share/ew.png
+
+echo
+echo "Endless Waltz messenger has been installed at the latest available version!"
+echo
