@@ -3,7 +3,7 @@ module github.com/ktraister/ew_messenger
 go 1.18
 
 require (
-	fyne.io/fyne/v2 v2.4.2
+	fyne.io/fyne/v2 v2.4.3
 	github.com/faiface/beep v1.1.0
 	github.com/google/uuid v1.4.0
 	github.com/gorilla/websocket v1.5.1
