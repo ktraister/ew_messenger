@@ -44,6 +44,23 @@ func trustedHostKeyCallback(logger *logrus.Logger, trustedKey string) ssh.HostKe
 
 func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.Label) {
 	logger.Info("Init proxy thread")
+
+	//check account status first
+	uType, err := getAcctType(logger, configuration)
+	if err != nil {
+		logger.Error("Failed to check account status:", err)
+		proxyFail(pStatus)
+		return
+	}
+	logger.Debug("from the API for user acct type: ", uType)
+	if uType != "premium" {
+	        logger.Info("Turning proxy off based on config")
+		pStatus.Text = "Proxy Off"
+		pStatus.Importance = widget.LowImportance
+		pStatus.Refresh()
+		return
+	}
+
 	// hard-coding proxy vars, but ingesting creds
 	sshServer := configuration.SSHHost
 	sshPort := 2222
