@@ -35,14 +35,13 @@ type Random_Req struct {
 var dat map[string]interface{}
 
 func ew_client(logger *logrus.Logger, configuration Configurations, message Post) error {
-	sysErr := error.New("INTERNAL SYSTEM ERROR")
+	sysErr := errors.New("INTERNAL SYSTEM ERROR")
 	user := fmt.Sprintf("%s_client-%s", configuration.User, uid())
 	cm, err := exConnect(logger, configuration, user)
 	if err != nil {
-		return false, sysErr
+		return sysErr
 	}
 	defer cm.Close()
-	passwd := configuration.Passwd
 
 	targetUser := fmt.Sprintf("%s_%s", string(message.To), "server")
 
@@ -59,13 +58,13 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	b, err := json.Marshal(helo)
 	if err != nil {
 		logger.Error(err)
-		return false, sysErr
+		return sysErr
 	}
 
 	err = cm.Send(b)
 	if err != nil {
 		logger.Error("Client:Unable to write message to websocket: ", err)
-		return false, sysErr
+		return sysErr
 	}
 	logger.Debug("Client:Sent init HELO")
 
@@ -74,7 +73,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	_, incoming, err := cm.Read()
 	if err != nil {
 		logger.Error("Client:Error reading message:", err)
-		return false, sysErr
+		return sysErr
 	}
 	logger.Debug("Client:Read init HELO response")
 
@@ -82,18 +81,18 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	logger.Debug(dat)
 	if err != nil {
 		logger.Error("Client:Error unmarshalling json:", err)
-		return false, sysErr
+		return sysErr
 	}
 
 	if dat["msg"].(string) == "User not found" {
 		logger.Error("Exchange couldn't route a message to ", targetUser)
-		return false, errors.New("User not found")
+		return errors.New("User not found")
 	} else if dat["msg"].(string) == "Target user limit reached" {
 		logger.Info("Exchange throttled target user")
-		return false, errors.New("Target user reached message limit. Try again later")
+		return errors.New("Target user reached message limit. Try again later")
 	} else if dat["msg"].(string) == "Basic account limit reached" {
 		logger.Info("Exchange throttled basic account")
-		return false, errors.New("Message limit reached. Upgrade or wait until Midnight EST to continue.")
+		return errors.New("Message limit reached. Upgrade or wait until Midnight EST to continue.")
 	}
 
 	heloUser := strings.Split(dat["from"].(string), "-")[0]
@@ -102,7 +101,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 		logger.Debug("Client received HELO from ", heloUser)
 	} else {
 		logger.Error(fmt.Sprintf("Didn't receive HELO_REPLY from %s in time, try again later", targetUser))
-		return false, errors.New("Target user unable to receive messages.")
+		return errors.New("Target user unable to receive messages.")
 	}
 
 	logger.Debug(fmt.Sprintf("shifting remote conn user from %s to %s", targetUser, dat["from"].(string)))
@@ -117,20 +116,20 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	decodedBytes, err := base64.StdEncoding.DecodeString(dat["msg"].(string))
 	if err != nil {
 		fmt.Println("Error decoding base64:", err)
-		return false, sysErr
+		return sysErr
 	}
 	logger.Debug("qPubKey data: ", decodedBytes)
 	err = qPubKey.UnmarshalBinary(decodedBytes)
 	if err != nil {
 		logger.Error(fmt.Sprintf("PubKey Marshall Error: %d", err))
-		return false, sysErr
+		return sysErr
 	}
 
 	logger.Debug("qPubKey before encrypt: ", qPubKey)
 	cipherText, err := ecies.Encrypt(suite, qPubKey, []byte(message.Msg), suite.Hash)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Ciphertext Error: %d", err))
-		return false, sysErr
+		return sysErr
 	}
 
 	cipherTextStr := base64.StdEncoding.EncodeToString(cipherText)
@@ -145,14 +144,14 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	b, err = json.Marshal(outgoing)
 	if err != nil {
 		logger.Error(err)
-		return false, sysErr
+		return sysErr
 	}
 
 	err = cm.Send(b)
 	if err != nil {
 		logger.Error(err)
-		return false, sysErr
+		return sysErr
 	}
 
-	return true, nil
+	return nil
 }
