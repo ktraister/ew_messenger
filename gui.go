@@ -214,7 +214,7 @@ func send(logger *logrus.Logger, textBox *widget.Entry) {
 		message := <-outgoingMsgChan
 
 		//update user and send message
-		_, err := ew_client(logger, globalConfig, message)
+		err := ew_client(logger, globalConfig, message)
 
 		//post our sent message
 		if err == nil {

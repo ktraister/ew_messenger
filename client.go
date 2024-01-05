@@ -34,11 +34,12 @@ type Random_Req struct {
 
 var dat map[string]interface{}
 
-func ew_client(logger *logrus.Logger, configuration Configurations, message Post) (bool, error) {
+func ew_client(logger *logrus.Logger, configuration Configurations, message Post) error {
+	sysErr := error.New("INTERNAL SYSTEM ERROR")
 	user := fmt.Sprintf("%s_client-%s", configuration.User, uid())
 	cm, err := exConnect(logger, configuration, user)
 	if err != nil {
-		return false, err
+		return false, sysErr
 	}
 	defer cm.Close()
 	passwd := configuration.Passwd
@@ -46,16 +47,6 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	targetUser := fmt.Sprintf("%s_%s", string(message.To), "server")
 
 	logger.Debug(fmt.Sprintf("Sending msg %s from user %s to user %s!!", message.Msg, user, targetUser))
-
-	if len(message.Msg) > 4096 {
-		logger.Error("We dont support this")
-		return false, err
-	}
-
-	if passwd == "" || user == "" {
-		logger.Error("authorized Creds are required")
-		return false, err
-	}
 
 	//send HELO to target user
 	helo := &Message{Type: "helo",
@@ -68,13 +59,13 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	b, err := json.Marshal(helo)
 	if err != nil {
 		logger.Error(err)
-		return false, err
+		return false, sysErr
 	}
 
 	err = cm.Send(b)
 	if err != nil {
 		logger.Error("Client:Unable to write message to websocket: ", err)
-		return false, err
+		return false, sysErr
 	}
 	logger.Debug("Client:Sent init HELO")
 
@@ -83,7 +74,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	_, incoming, err := cm.Read()
 	if err != nil {
 		logger.Error("Client:Error reading message:", err)
-		return false, err
+		return false, sysErr
 	}
 	logger.Debug("Client:Read init HELO response")
 
@@ -91,7 +82,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	logger.Debug(dat)
 	if err != nil {
 		logger.Error("Client:Error unmarshalling json:", err)
-		return false, err
+		return false, sysErr
 	}
 
 	if dat["msg"].(string) == "User not found" {
@@ -126,20 +117,20 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	decodedBytes, err := base64.StdEncoding.DecodeString(dat["msg"].(string))
 	if err != nil {
 		fmt.Println("Error decoding base64:", err)
-		return false, err
+		return false, sysErr
 	}
 	logger.Debug("qPubKey data: ", decodedBytes)
 	err = qPubKey.UnmarshalBinary(decodedBytes)
 	if err != nil {
 		logger.Error(fmt.Sprintf("PubKey Marshall Error: %d", err))
-		return false, err
+		return false, sysErr
 	}
 
 	logger.Debug("qPubKey before encrypt: ", qPubKey)
 	cipherText, err := ecies.Encrypt(suite, qPubKey, []byte(message.Msg), suite.Hash)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Ciphertext Error: %d", err))
-		return false, err
+		return false, sysErr
 	}
 
 	cipherTextStr := base64.StdEncoding.EncodeToString(cipherText)
@@ -154,13 +145,13 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	b, err = json.Marshal(outgoing)
 	if err != nil {
 		logger.Error(err)
-		return false, err
+		return false, sysErr
 	}
 
 	err = cm.Send(b)
 	if err != nil {
 		logger.Error(err)
-		return false, err
+		return false, sysErr
 	}
 
 	return true, nil
