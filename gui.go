@@ -4,6 +4,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -195,12 +196,12 @@ func sendMsg(messageEntry *widget.Entry) {
 	if message != "" {
 		//check, spelled like it sounds
 		if targetUser == globalConfig.User {
-			incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", From: "SYSTEM", To: "SYSTEM", ok: false}
+			incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", From: "SYSTEM", To: "SYSTEM", Err: errors.New("SYSTEM: Self-sending is not allowed")}
 			return
 		}
 
 		//drop the messsage on the outgoing channel
-		outgoingMsgChan <- Post{Msg: message, To: targetUser, From: globalConfig.User, ok: true}
+		outgoingMsgChan <- Post{Msg: message, To: targetUser, From: globalConfig.User}
 
 		// Clear the message entry field after sending
 		messageEntry.SetText("")
@@ -213,10 +214,14 @@ func send(logger *logrus.Logger, textBox *widget.Entry) {
 		message := <-outgoingMsgChan
 
 		//update user and send message
-		ok := ew_client(logger, globalConfig, message)
+		_, err := ew_client(logger, globalConfig, message)
 
 		//post our sent message
-		incomingMsgChan <- Post{Msg: message.Msg, To: message.To, From: globalConfig.User, ok: ok}
+		if err == nil {
+			incomingMsgChan <- Post{Msg: message.Msg, To: message.To, From: globalConfig.User}
+		} else {
+			incomingMsgChan <- Post{Msg: message.Msg, To: message.To, From: globalConfig.User, Err: err}
+		}
 	}
 }
 
@@ -226,7 +231,7 @@ func post(cont *fyne.Container, userChan chan Post) {
 		line := canvas.NewLine(color.RGBA{255, 255, 255, 20})
 		line.StrokeWidth = 0.2
 		message := <-userChan
-		if message.ok {
+		if message.Err == nil {
 			//regex is misbehaving rn
 			u, err := url.Parse(message.Msg)
 			if err == nil && (u.Scheme == "http" || u.Scheme == "https") {
@@ -247,7 +252,7 @@ func post(cont *fyne.Container, userChan chan Post) {
 				cont.Add(line)
 			}
 		} else {
-			messageLabel := widget.NewLabel(fmt.Sprintf("ERROR SENDING MSG %s", message.Msg))
+			messageLabel := widget.NewLabel(fmt.Sprintf("%s", message.Err))
 			messageLabel.Importance = widget.DangerImportance
 			cont.Add(messageLabel)
 			cont.Add(line)

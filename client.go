@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"go.dedis.ch/kyber/v3/encrypt/ecies"
@@ -15,7 +16,7 @@ type Post struct {
 	From string `json:"from"`
 	To   string `json:"to"`
 	Msg  string `json:"msg"`
-	ok   bool   `json:"ok"`
+	Err  error  `json:"ok"`
 }
 
 type Message struct {
@@ -33,11 +34,11 @@ type Random_Req struct {
 
 var dat map[string]interface{}
 
-func ew_client(logger *logrus.Logger, configuration Configurations, message Post) bool {
+func ew_client(logger *logrus.Logger, configuration Configurations, message Post) (bool, error) {
 	user := fmt.Sprintf("%s_client-%s", configuration.User, uid())
 	cm, err := exConnect(logger, configuration, user)
 	if err != nil {
-		return false
+		return false, err
 	}
 	defer cm.Close()
 	passwd := configuration.Passwd
@@ -48,12 +49,12 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 
 	if len(message.Msg) > 4096 {
 		logger.Error("We dont support this")
-		return false
+		return false, err
 	}
 
 	if passwd == "" || user == "" {
 		logger.Error("authorized Creds are required")
-		return false
+		return false, err
 	}
 
 	//send HELO to target user
@@ -67,13 +68,13 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	b, err := json.Marshal(helo)
 	if err != nil {
 		logger.Error(err)
-		return false
+		return false, err
 	}
 
 	err = cm.Send(b)
 	if err != nil {
 		logger.Error("Client:Unable to write message to websocket: ", err)
-		return false
+		return false, err
 	}
 	logger.Debug("Client:Sent init HELO")
 
@@ -82,7 +83,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	_, incoming, err := cm.Read()
 	if err != nil {
 		logger.Error("Client:Error reading message:", err)
-		return false
+		return false, err
 	}
 	logger.Debug("Client:Read init HELO response")
 
@@ -90,12 +91,15 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	logger.Debug(dat)
 	if err != nil {
 		logger.Error("Client:Error unmarshalling json:", err)
-		return false
+		return false, err
 	}
 
-	if dat["msg"] == "User not found" {
+	if dat["msg"].(string) == "User not found" {
 		logger.Error("Exchange couldn't route a message to ", targetUser)
-		return false
+		return false, errors.New("User not found")
+	} else if dat["msg"].(string) == "Basic account limit reached" {
+		logger.Info("Exchange throttled basic account")
+		return false, errors.New("Message limit reached. Upgrade or wait until Midnight EST to continue.")
 	}
 
 	heloUser := strings.Split(dat["from"].(string), "-")[0]
@@ -104,7 +108,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 		logger.Debug("Client received HELO from ", heloUser)
 	} else {
 		logger.Error(fmt.Sprintf("Didn't receive HELO_REPLY from %s in time, try again later", targetUser))
-		return false
+		return false, errors.New("Target user unable to receive messages.")
 	}
 
 	logger.Debug(fmt.Sprintf("shifting remote conn user from %s to %s", targetUser, dat["from"].(string)))
@@ -119,20 +123,20 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	decodedBytes, err := base64.StdEncoding.DecodeString(dat["msg"].(string))
 	if err != nil {
 		fmt.Println("Error decoding base64:", err)
-		return false
+		return false, err
 	}
 	logger.Debug("qPubKey data: ", decodedBytes)
 	err = qPubKey.UnmarshalBinary(decodedBytes)
 	if err != nil {
 		logger.Error(fmt.Sprintf("PubKey Marshall Error: %d", err))
-		return false
+		return false, err
 	}
 
 	logger.Debug("qPubKey before encrypt: ", qPubKey)
 	cipherText, err := ecies.Encrypt(suite, qPubKey, []byte(message.Msg), suite.Hash)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Ciphertext Error: %d", err))
-		return false
+		return false, err
 	}
 
 	cipherTextStr := base64.StdEncoding.EncodeToString(cipherText)
@@ -147,14 +151,14 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	b, err = json.Marshal(outgoing)
 	if err != nil {
 		logger.Error(err)
-		return false
+		return false, err
 	}
 
 	err = cm.Send(b)
 	if err != nil {
 		logger.Error(err)
-		return false
+		return false, err
 	}
 
-	return true
+	return true, nil
 }

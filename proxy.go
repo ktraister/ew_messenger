@@ -54,7 +54,7 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 	}
 	logger.Debug("from the API for user acct type: ", uType)
 	if uType != "premium" {
-	        logger.Info("Turning proxy off based on config")
+		logger.Info("Turning proxy off based on config")
 		pStatus.Text = "Proxy Off"
 		pStatus.Importance = widget.LowImportance
 		pStatus.Refresh()
