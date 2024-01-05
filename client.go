@@ -97,6 +97,9 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	if dat["msg"].(string) == "User not found" {
 		logger.Error("Exchange couldn't route a message to ", targetUser)
 		return false, errors.New("User not found")
+	} else if dat["msg"].(string) == "Target user limit reached" {
+		logger.Info("Exchange throttled target user")
+		return false, errors.New("Target user reached message limit. Try again later")
 	} else if dat["msg"].(string) == "Basic account limit reached" {
 		logger.Info("Exchange throttled basic account")
 		return false, errors.New("Message limit reached. Upgrade or wait until Midnight EST to continue.")
