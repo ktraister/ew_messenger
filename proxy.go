@@ -69,9 +69,17 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 	localPort := 0
 	remoteAddress := "localhost:443"
 
+	//specifies global configuration values for SSH algos -- SHOULD BE SAME IN PROXY.GO
+	cipherConfig := ssh.Config{
+		KeyExchanges: []string{"curve25519-sha256", "curve25519-sha256@libssh.org"},
+		Ciphers:      []string{"aes128-gcm@openssh.com", "aes256-gcm@openssh.com", "aes128-ctr", "aes192-ctr", "aes256-ctr"},
+		MACs:         []string{"hmac-sha2-256-etm@openssh.com", "hmac-sha2-512-etm@openssh.com", "hmac-sha2-256", "hmac-sha2-512"},
+	}
+
 	// Create an SSH client configuration
 	config := &ssh.ClientConfig{
-		User: sshUser,
+		Config: cipherConfig,
+		User:   sshUser,
 		Auth: []ssh.AuthMethod{
 			ssh.Password(sshPassword),
 		},
