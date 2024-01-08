@@ -254,6 +254,7 @@ func post(cont *fyne.Container, userChan chan Post) {
 		} else {
 			messageLabel := widget.NewLabel(fmt.Sprintf("%s", message.Err))
 			messageLabel.Importance = widget.DangerImportance
+			messageLabel.Wrapping = fyne.TextWrapWord
 			cont.Add(messageLabel)
 			cont.Add(line)
 		}

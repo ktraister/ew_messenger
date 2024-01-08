@@ -3,15 +3,15 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"math/rand"
-	"strings"
-	"time"
-
 	"github.com/sirupsen/logrus"
 	"go.dedis.ch/kyber/v3/encrypt/ecies"
 	"go.dedis.ch/kyber/v3/group/edwards25519"
 	"go.dedis.ch/kyber/v3/util/random"
+	"math/rand"
+	"strings"
+	"time"
 )
 
 type Client_Resp struct {
@@ -98,6 +98,20 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 	err = json.Unmarshal([]byte(incoming), &dat)
 	if err != nil {
 		logger.Error("Error unmarshalling json:", err)
+		return
+	}
+
+	if dat["msg"].(string) == "User not found" {
+		logger.Error("Exchange couldn't route a message to ", targetUser)
+		incomingMsgChan <- Post{From: dat["user"].(string), To: globalConfig.User, Err: errors.New("User not found")}
+		return
+	} else if dat["msg"].(string) == "Target user limit reached" {
+		logger.Info("Exchange throttled target user")
+		incomingMsgChan <- Post{From: dat["user"].(string), To: globalConfig.User, Err: errors.New("Target user reached message limit. Try again later")}
+		return
+	} else if dat["msg"].(string) == "Basic account limit reached" {
+		logger.Info("Exchange throttled basic account")
+		incomingMsgChan <- Post{From: dat["user"].(string), To: globalConfig.User, Err: errors.New("Message limit reached. Upgrade or wait until Midnight EST to continue.")}
 		return
 	}
 
