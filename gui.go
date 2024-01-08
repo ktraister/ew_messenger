@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/sha512"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -487,16 +485,9 @@ func main() {
 		dialog.ShowCustomConfirm("", "Log In", "Cancel", content, func(b bool) {
 			logger.Debug("Checking creds...")
 
-			//create our hasher to hash our pass
-			hash := sha512.New()
-			hash.Write([]byte(password.Text))
-			hashSum := hash.Sum(nil)
-			hashString := hex.EncodeToString(hashSum)
-
 			//set values we just took in with login widget
 			globalConfig.User = strings.ToLower(username.Text)
-			globalConfig.Passwd = hashString
-			logger.Debug(hashString)
+			globalConfig.Passwd = password.Text
 
 			//pass the hash lol
 			ok, err := checkCreds()
