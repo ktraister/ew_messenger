@@ -3,15 +3,15 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"math/rand"
-	"strings"
-	"time"
-
 	"github.com/sirupsen/logrus"
 	"go.dedis.ch/kyber/v3/encrypt/ecies"
 	"go.dedis.ch/kyber/v3/group/edwards25519"
 	"go.dedis.ch/kyber/v3/util/random"
+	"math/rand"
+	"strings"
+	"time"
 )
 
 type Client_Resp struct {
@@ -101,6 +101,20 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 		return
 	}
 
+	if dat["msg"].(string) == "User not found" {
+		logger.Error("Exchange couldn't route a message to ", targetUser)
+		incomingMsgChan <- Post{From: dat["user"].(string), To: globalConfig.User, Err: errors.New("User not found")}
+		return
+	} else if dat["msg"].(string) == "Target user limit reached" {
+		logger.Info("Exchange throttled target user")
+		incomingMsgChan <- Post{From: dat["user"].(string), To: globalConfig.User, Err: errors.New("Target user reached message limit. Try again later")}
+		return
+	} else if dat["msg"].(string) == "Basic account limit reached" {
+		logger.Info("Exchange throttled basic account")
+		incomingMsgChan <- Post{From: dat["user"].(string), To: globalConfig.User, Err: errors.New("Message limit reached. Upgrade or wait until Midnight EST to continue.")}
+		return
+	}
+
 	logger.Debug("got base64 cipherText ", dat["msg"].(string))
 	decodedBytes, err := base64.StdEncoding.DecodeString(dat["msg"].(string))
 	if err != nil {
@@ -115,7 +129,7 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 	}
 
 	//logger.Debug("Incoming msg: ", dat["msg"].(string))
-	incomingMsg := Post{From: dat["user"].(string), To: globalConfig.User, Msg: string(plainText), ok: true}
+	incomingMsg := Post{From: dat["user"].(string), To: globalConfig.User, Msg: string(plainText)}
 	incomingMsgChan <- incomingMsg
 	playSound(logger)
 }
