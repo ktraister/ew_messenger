@@ -20,7 +20,7 @@ if [[ -d shortcuts/ ]]; then
 fi
 
 #grab the remote installer zip
-curl https://endless-waltz-xyz-downloads.s3.us-east-2.amazonaws.com/ew_messenger_nix.zip -o ew_messenger.zip
+curl -s https://endless-waltz-xyz-downloads.s3.us-east-2.amazonaws.com/ew_messenger_nix.zip -o ew_messenger.zip
 #unzip it to /tmp
 unzip ew_messenger.zip
 
@@ -32,7 +32,7 @@ for i in `ls /home`; do
     if [[ -d $dest ]] && [[ ! -f $dest/endlesswaltz.desktop ]]; then
 	cp shortcuts/endlesswaltz.desktop $dest
 	chmod a+x $dest/endlesswaltz.desktop
-	if [[ `which gio` ]]; then
+	if [[ `which gio` ]] && [[ `which dbus-launch` ]]; then
 	    sudo -u $i -g $i dbus-launch gio set $dest/endlesswaltz.desktop "metadata::trusted" true
         fi
     fi
