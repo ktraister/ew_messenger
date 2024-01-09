@@ -407,6 +407,23 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	myWindow.SetContent(finalContainer)
 	myWindow.Resize(fyne.NewSize(200, 600))
 	myWindow.Show()
+
+	if !binIsCurrent(logger) {
+		logger.Debug("Bin is not current!")
+		verWindow := myApp.NewWindow("Important Information")
+		verWindow.CenterOnScreen()
+		cont := container.NewVBox()
+		cont.Add(widget.NewLabel("A new version of the EW_Messenger is available."))
+		u, _ := url.Parse("https://endlesswaltz.xyz/downloads")
+		linkLabel := widget.NewHyperlinkWithStyle("Download the new version here.", u, fyne.TextAlignCenter, fyne.TextStyle{})
+		cont.Add(linkLabel)
+		verWindow.SetContent(cont)
+		verWindow.Show()
+		verWindow.RequestFocus()
+
+	} else {
+		logger.Debug("Bin IS current!")
+	}
 }
 
 func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan chan Post) {

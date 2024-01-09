@@ -74,3 +74,33 @@ func getAcctType(logger *logrus.Logger, configuration Configurations) (string, e
 
 	return string(output), nil
 }
+
+func binIsCurrent(logger *logrus.Logger) bool {
+	//cop out
+	if globalConfig.BinVersion == "TESTING" {
+		return true
+	}
+
+	//setup TLS client
+	ts := tlsClient(globalConfig.RandomURL)
+
+	urlSlice := strings.Split(globalConfig.ExchangeURL, "/")
+	url := "https://" + urlSlice[2] + "/api/clientVersionCheck"
+	req, err := http.NewRequest("GET", url, nil)
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("User", globalConfig.User)
+	req.Header.Set("Passwd", globalConfig.Passwd)
+	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	resp, err := client.Do(req)
+	if err != nil {
+		logger.Error(err)
+		return false
+	}
+	output, err := io.ReadAll(resp.Body)
+	if err != nil {
+		logger.Error(err)
+		return false
+	}
+
+	return globalConfig.BinVersion == string(output)
+}
