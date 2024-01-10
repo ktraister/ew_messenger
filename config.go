@@ -16,6 +16,7 @@ var configuredRandomURL = ""
 var configuredExchangeURL = ""
 
 func fetchConfig() Configurations {
+    /*
 	//create default config
 	defaultConfig := Configurations{
 		RandomURL:   "https://api.endlesswaltz.xyz:443/api",
@@ -25,7 +26,7 @@ func fetchConfig() Configurations {
 		LogLevel:    "Error",
 		BinVersion:  "REPLACEME",
 	}
-	/*
+	*/
 		//localdev debug config
 		defaultConfig := Configurations{
 			RandomURL:   "https://localhost:443/api",
@@ -35,7 +36,6 @@ func fetchConfig() Configurations {
 			LogLevel:    "Debug",
 		        BinVersion:  "TESTING",
 		}
-	*/
 	configuredRandomURL = defaultConfig.RandomURL
 	configuredExchangeURL = defaultConfig.ExchangeURL
 
