@@ -28,7 +28,10 @@ import (
 //different layouts avail
 //https://developer.fyne.io/explore/layouts.html#border
 
-var users = []string{}
+var activeUsers = []string{}
+var friendUsers = []string{}
+var nonFriendUsers = []string{}
+var tmpFriendUsers = []string{}
 var targetUser = ""
 var globalConfig Configurations
 var stashedMessages = syncmap.Map{}
@@ -38,6 +41,50 @@ var chanMap = syncmap.Map{}
 func cnv(input float64) float64 {
 	factor := -(input)
 	return 1.0 - 0.1*factor
+}
+
+func removeFriends() {
+	for _, user := range activeUsers {
+		if !isFriend(user) && !isNonFriend(user) {
+			nonFriendUsers = append(nonFriendUsers, user)
+		}
+	}
+}
+
+func isActive(user string) bool {
+	for _, element := range activeUsers {
+		if element == user {
+			return true
+		}
+	}
+	return false
+}
+
+func isFriend(user string) bool {
+	for _, element := range friendUsers {
+		if element == user {
+			return true
+		}
+	}
+	return false
+}
+
+func isTmpFriend(user string) bool {
+	for _, element := range tmpFriendUsers {
+		if element == user {
+			return true
+		}
+	}
+	return false
+}
+
+func isNonFriend(user string) bool {
+	for _, element := range nonFriendUsers {
+		if element == user {
+			return true
+		}
+	}
+	return false
 }
 
 func checkCreds() (bool, string) {
@@ -259,18 +306,22 @@ func post(cont *fyne.Container, userChan chan Post) {
 	}
 }
 
-func refreshUsers(logger *logrus.Logger, container *fyne.Container) {
+func refreshUsers(logger *logrus.Logger, userContainer *fyne.Container, friendContainer *fyne.Container) {
 	for {
-		users = []string{}
-		users, _ = getExUsers(logger, globalConfig)
-		//logger.Debug("refreshUsers --> ", users)
-		container.Refresh()
+		friendUsers, _ = getFriends(logger)
+		friendContainer.Refresh()
+		activeUsers, _ = getExUsers(logger)
+		removeFriends()
+		userContainer.Refresh()
 		//refresh rate
 		time.Sleep(1 * time.Second)
 	}
 }
 
 func afterLogin(logger *logrus.Logger, myApp fyne.App) {
+	//goroutine to route messages
+	go msgRouter(logger)
+
 	//setup New window
 	myWindow := myApp.NewWindow("EW Messenger")
 	myWindow.SetMaster()
@@ -284,19 +335,11 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	sideLine.StrokeWidth = 3
 
 	// add onlineUsers panel to show and select users
-	onlineUsers := container.NewMax()
-
-	//add a goroutine here to read ExchangeAPI for live users and populate with labels
-	go refreshUsers(logger, onlineUsers)
-
-	//goroutine to route messages
-	go msgRouter(logger)
-
 	//build our user list
 	userList := widget.NewList(
 		//length
 		func() int {
-			return len(users)
+			return len(nonFriendUsers)
 		},
 		//create Item
 		func() fyne.CanvasObject {
@@ -306,8 +349,8 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 		//updateItem
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
 			text := obj.(*fyne.Container).Objects[0].(*widget.Label)
-			text.SetText(users[id])
-			if messageStashed(users[id]) {
+			text.SetText(nonFriendUsers[id])
+			if messageStashed(nonFriendUsers[id]) {
 				//turn the user blue if we have messages from them
 				text.Importance = widget.HighImportance
 			} else {
@@ -317,7 +360,7 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 		})
 	userList.OnSelected = func(id widget.ListItemID) {
 		//setting global scoped var
-		targetUser = users[id]
+		targetUser = nonFriendUsers[id]
 		//dont show as selected
 		userList.UnselectAll()
 
@@ -332,7 +375,66 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 		postStashedMessages(targetUser)
 	}
 
-	onlineUsers.Add(userList)
+	// add friendList panel to show and select users
+	//build our friends list
+	friendList := widget.NewList(
+		//length
+		func() int {
+			return len(friendUsers)
+		},
+		//create Item
+		func() fyne.CanvasObject {
+			label := widget.NewLabel("Text")
+			return container.NewBorder(nil, nil, nil, nil, label)
+		},
+		//updateItem
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			text := obj.(*fyne.Container).Objects[0].(*widget.Label)
+			text.SetText(friendUsers[id])
+			if messageStashed(friendUsers[id]) {
+				//turn the user blue if we have messages from them
+				text.Importance = widget.HighImportance
+			} else {
+				//reset user text
+				text.Importance = widget.MediumImportance
+				if !isActive(friendUsers[id]) {
+					text.Importance = widget.LowImportance
+				}
+			}
+		})
+	friendList.OnSelected = func(id widget.ListItemID) {
+		//setting global scoped var
+		targetUser = friendUsers[id]
+		//dont show as selected
+		friendList.UnselectAll()
+
+		//create the new chan for the user here if not exists
+		_, ok := chanMap.Load(targetUser)
+		if ok {
+			return
+		}
+		ch := make(chan Post)
+		chanMap.Store(targetUser, ch)
+		newConvoWin(logger, myApp, targetUser, ch)
+		postStashedMessages(targetUser)
+	}
+
+	friendButton := widget.NewButton("Manage Friends", func() {
+		manageFriendsWin(logger, myApp)
+	})
+	friendButton.Importance = widget.LowImportance
+	friendText := widget.NewLabelWithStyle("Friends", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	userContainer := container.NewMax(userList)
+	friendContainer := container.NewMax(friendList)
+	friendContainer = container.NewBorder(friendText, friendButton, nil, nil, friendContainer)
+	onlineUsers := container.NewVSplit(userContainer, friendContainer)
+	onlineUsers.SetOffset(.6)
+
+	//setUp friendUsers slices here
+	friendUsers, _ = getFriends(logger)
+	tmpFriendUsers = friendUsers
+	//add a goroutine here to read ExchangeAPI for live users and populate with labels
+	go refreshUsers(logger, userContainer, friendContainer)
 
 	//add container to hold the users list
 	bLine2 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
@@ -477,6 +579,64 @@ func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan ch
 
 	myWindow.SetContent(sendContainer)
 	myWindow.Resize(fyne.NewSize(350, 450))
+	myWindow.Show()
+}
+
+func manageFriendsWin(logger *logrus.Logger, myApp fyne.App) {
+	myWindow := myApp.NewWindow("Manage Friends")
+
+	//allUsers []string{}
+	allUsers, _ := getAllUsers(logger)
+	//var cvObj *fyne.Container
+
+	userList := widget.NewList(
+		//length
+		func() int {
+			return len(allUsers)
+		},
+		//create Item
+		func() fyne.CanvasObject {
+			label := widget.NewLabel("Text")
+			return container.NewBorder(nil, nil, nil, nil, label)
+		},
+		//updateItem
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			text := obj.(*fyne.Container).Objects[0].(*widget.Label)
+			text.SetText(allUsers[id])
+			if isTmpFriend(allUsers[id]) {
+				text.Importance = widget.HighImportance
+			} else {
+				text.Importance = widget.MediumImportance
+			}
+		})
+	userList.OnSelected = func(id widget.ListItemID) {
+		if isTmpFriend(allUsers[id]) {
+			var tmp []string
+			for _, user := range tmpFriendUsers {
+				if user != allUsers[id] {
+					tmp = append(tmp, user)
+				}
+			}
+			tmpFriendUsers = tmp
+
+		} else {
+			tmpFriendUsers = append(tmpFriendUsers, allUsers[id])
+		}
+		fmt.Println(friendUsers)
+		userList.UnselectAll()
+		userList.Refresh()
+	}
+
+	submitButton := widget.NewButton("Submit", func() {
+		//POST new user list and close the window
+		putFriends(logger)
+		myWindow.Close()
+	})
+	activeText := widget.NewLabelWithStyle("Available Users", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	allContainer := container.NewMax(userList)
+	allContainer = container.NewBorder(activeText, submitButton, nil, nil, allContainer)
+	myWindow.SetContent(allContainer)
+	myWindow.Resize(fyne.NewSize(250, 450))
 	myWindow.Show()
 }
 
