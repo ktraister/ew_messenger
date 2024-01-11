@@ -46,7 +46,7 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 	logger.Info("Init proxy thread")
 
 	//check account status first
-	uType, err := getAcctType(logger, configuration)
+	uType, err := getAcctType(logger)
 	if err != nil {
 		logger.Error("Failed to check account status:", err)
 		proxyFail(pStatus)

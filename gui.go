@@ -50,6 +50,15 @@ func isActive(user string) bool {
 	return false        
 }
 
+func isFriend(user string) bool {
+	for _, element := range friendUsers {
+		if element == user {
+			return true
+		}
+	}
+	return false        
+}
+
 func checkCreds() (bool, string) {
 	//setup tls
 	ts := tlsClient(globalConfig.RandomURL)
@@ -270,11 +279,11 @@ func post(cont *fyne.Container, userChan chan Post) {
 }
 
 func refreshUsers(logger *logrus.Logger, userContainer *fyne.Container, friendContainer *fyne.Container) {
+	friendUsers, _ = getFriends(logger)
+	friendContainer.Refresh()
 	for {
-		activeUsers, _ = getExUsers(logger, globalConfig)
-		friendUsers, _ = getFriends(logger, globalConfig)
+		activeUsers, _ = getExUsers(logger)
 		userContainer.Refresh()
-		friendContainer.Refresh()
 		//refresh rate
 		time.Sleep(1 * time.Second)
 	}
@@ -381,12 +390,15 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 		postStashedMessages(targetUser)
 	}
 
+	friendButton := widget.NewButton("Manage Friends", func() {
+		manageFriendsWin(logger, myApp)
+	})  
 	friendText := widget.NewLabelWithStyle("Friends", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	userContainer := container.NewMax(userList)
 	friendContainer := container.NewMax(friendList)
-	friendContainer = container.NewBorder(friendText, nil, nil, nil, friendContainer)
+	friendContainer = container.NewBorder(friendText, friendButton, nil, nil, friendContainer)
 	onlineUsers := container.NewVSplit(userContainer, friendContainer)
-	onlineUsers.SetOffset(.7)
+	onlineUsers.SetOffset(.6)
 	//add a goroutine here to read ExchangeAPI for live users and populate with labels
 	go refreshUsers(logger, userContainer, friendContainer)
 
@@ -451,7 +463,6 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 
 	//Create borders for buttons
 	finalContainer := container.NewBorder(bLine, nil, nil, nil, nil)
-	//need to set up online users and Friend users to split this space
 	finalContainer.Add(onlineUsers)
 	finalContainer = container.NewBorder(topContainer, nil, nil, nil, finalContainer)
 	finalContainer = container.NewBorder(topLine, nil, nil, nil, finalContainer)
@@ -536,6 +547,65 @@ func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan ch
 	myWindow.Resize(fyne.NewSize(350, 450))
 	myWindow.Show()
 }
+
+func manageFriendsWin(logger *logrus.Logger, myApp fyne.App) {
+	myWindow := myApp.NewWindow("Manage Friends")
+
+	//allUsers []string{}
+	allUsers, _ := getAllUsers(logger)
+	//var cvObj *fyne.Container
+
+	userList := widget.NewList(
+		//length
+		func() int {
+			return len(allUsers)
+		},
+		//create Item
+		func() fyne.CanvasObject {
+			label := widget.NewLabel("Text")
+			return container.NewBorder(nil, nil, nil, nil, label)
+		},
+		//updateItem
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			text := obj.(*fyne.Container).Objects[0].(*widget.Label)
+			text.SetText(allUsers[id])
+			if isFriend(allUsers[id]) {
+			        text.Importance = widget.HighImportance  
+			} else {
+			        text.Importance = widget.MediumImportance  
+                        }
+		})
+	userList.OnSelected = func(id widget.ListItemID) {
+	        if isFriend(allUsers[id]) {
+		        var tmp []string
+			for _, user := range friendUsers {
+			     if user != allUsers[id] {
+				 tmp = append(tmp, user)
+			     }
+                        }
+                        friendUsers =  tmp
+
+                } else {
+		        friendUsers = append(friendUsers, allUsers[id])
+                }
+		fmt.Println(friendUsers)
+		userList.UnselectAll()
+		userList.Refresh()
+	}
+
+	submitButton := widget.NewButton("Submit", func() {
+	    //POST new user list and close the window
+	    putFriends(logger)
+	    myWindow.Close()
+	})  
+	activeText := widget.NewLabelWithStyle("Available Users", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	allContainer := container.NewMax(userList)
+	allContainer = container.NewBorder(activeText, submitButton, nil, nil, allContainer)
+	myWindow.SetContent(allContainer)
+	myWindow.Resize(fyne.NewSize(250, 450))
+	myWindow.Show()
+}
+
 
 func main() {
 	//globalConfig stuff
