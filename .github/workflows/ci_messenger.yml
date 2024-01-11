@@ -27,6 +27,10 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AUTOMATION_AWS_SECRET_KEY }}
           AWS_DEFAULT_REGION: 'us-east-1'
         run: | 
+          #set version in config
+          TAG=`git describe --tags --abbrev=0`
+          sed -i "s/REPLACEME/$TAG/" config.go
+
           startDir=`pwd`
 
           #install fyne-cross

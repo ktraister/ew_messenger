@@ -1,9 +1,8 @@
 package main
 
 import (
-	"crypto/sha512"
-	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -29,7 +28,10 @@ import (
 //different layouts avail
 //https://developer.fyne.io/explore/layouts.html#border
 
-var users = []string{}
+var activeUsers = []string{}
+var friendUsers = []string{}
+var nonFriendUsers = []string{}
+var tmpFriendUsers = []string{}
 var targetUser = ""
 var globalConfig Configurations
 var stashedMessages = syncmap.Map{}
@@ -39,6 +41,50 @@ var chanMap = syncmap.Map{}
 func cnv(input float64) float64 {
 	factor := -(input)
 	return 1.0 - 0.1*factor
+}
+
+func removeFriends() {
+	for _, user := range activeUsers {
+		if !isFriend(user) && !isNonFriend(user) {
+			nonFriendUsers = append(nonFriendUsers, user)
+		}
+	}
+}
+
+func isActive(user string) bool {
+	for _, element := range activeUsers {
+		if element == user {
+			return true
+		}
+	}
+	return false
+}
+
+func isFriend(user string) bool {
+	for _, element := range friendUsers {
+		if element == user {
+			return true
+		}
+	}
+	return false
+}
+
+func isTmpFriend(user string) bool {
+	for _, element := range tmpFriendUsers {
+		if element == user {
+			return true
+		}
+	}
+	return false
+}
+
+func isNonFriend(user string) bool {
+	for _, element := range nonFriendUsers {
+		if element == user {
+			return true
+		}
+	}
+	return false
 }
 
 func checkCreds() (bool, string) {
@@ -195,12 +241,12 @@ func sendMsg(messageEntry *widget.Entry) {
 	if message != "" {
 		//check, spelled like it sounds
 		if targetUser == globalConfig.User {
-			incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", From: "SYSTEM", To: "SYSTEM", ok: false}
+			incomingMsgChan <- Post{Msg: "Sending messages to yourself is not allowed", From: "SYSTEM", To: "SYSTEM", Err: errors.New("SYSTEM: Self-sending is not allowed")}
 			return
 		}
 
 		//drop the messsage on the outgoing channel
-		outgoingMsgChan <- Post{Msg: message, To: targetUser, From: globalConfig.User, ok: true}
+		outgoingMsgChan <- Post{Msg: message, To: targetUser, From: globalConfig.User}
 
 		// Clear the message entry field after sending
 		messageEntry.SetText("")
@@ -213,10 +259,14 @@ func send(logger *logrus.Logger, textBox *widget.Entry) {
 		message := <-outgoingMsgChan
 
 		//update user and send message
-		ok := ew_client(logger, globalConfig, message)
+		err := ew_client(logger, globalConfig, message)
 
 		//post our sent message
-		incomingMsgChan <- Post{Msg: message.Msg, To: message.To, From: globalConfig.User, ok: ok}
+		if err == nil {
+			incomingMsgChan <- Post{Msg: message.Msg, To: message.To, From: globalConfig.User}
+		} else {
+			incomingMsgChan <- Post{Msg: message.Msg, To: message.To, From: globalConfig.User, Err: err}
+		}
 	}
 }
 
@@ -226,7 +276,7 @@ func post(cont *fyne.Container, userChan chan Post) {
 		line := canvas.NewLine(color.RGBA{255, 255, 255, 20})
 		line.StrokeWidth = 0.2
 		message := <-userChan
-		if message.ok {
+		if message.Err == nil {
 			//regex is misbehaving rn
 			u, err := url.Parse(message.Msg)
 			if err == nil && (u.Scheme == "http" || u.Scheme == "https") {
@@ -247,26 +297,31 @@ func post(cont *fyne.Container, userChan chan Post) {
 				cont.Add(line)
 			}
 		} else {
-			messageLabel := widget.NewLabel(fmt.Sprintf("ERROR SENDING MSG %s", message.Msg))
+			messageLabel := widget.NewLabel(fmt.Sprintf("%s", message.Err))
 			messageLabel.Importance = widget.DangerImportance
+			messageLabel.Wrapping = fyne.TextWrapWord
 			cont.Add(messageLabel)
 			cont.Add(line)
 		}
 	}
 }
 
-func refreshUsers(logger *logrus.Logger, container *fyne.Container) {
+func refreshUsers(logger *logrus.Logger, userContainer *fyne.Container, friendContainer *fyne.Container) {
 	for {
-		users = []string{}
-		users, _ = getExUsers(logger, globalConfig)
-		//logger.Debug("refreshUsers --> ", users)
-		container.Refresh()
+		friendUsers, _ = getFriends(logger)
+		friendContainer.Refresh()
+		activeUsers, _ = getExUsers(logger)
+		removeFriends()
+		userContainer.Refresh()
 		//refresh rate
 		time.Sleep(1 * time.Second)
 	}
 }
 
 func afterLogin(logger *logrus.Logger, myApp fyne.App) {
+	//goroutine to route messages
+	go msgRouter(logger)
+
 	//setup New window
 	myWindow := myApp.NewWindow("EW Messenger")
 	myWindow.SetMaster()
@@ -280,19 +335,11 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	sideLine.StrokeWidth = 3
 
 	// add onlineUsers panel to show and select users
-	onlineUsers := container.NewMax()
-
-	//add a goroutine here to read ExchangeAPI for live users and populate with labels
-	go refreshUsers(logger, onlineUsers)
-
-	//goroutine to route messages
-	go msgRouter(logger)
-
 	//build our user list
 	userList := widget.NewList(
 		//length
 		func() int {
-			return len(users)
+			return len(nonFriendUsers)
 		},
 		//create Item
 		func() fyne.CanvasObject {
@@ -302,8 +349,8 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 		//updateItem
 		func(id widget.ListItemID, obj fyne.CanvasObject) {
 			text := obj.(*fyne.Container).Objects[0].(*widget.Label)
-			text.SetText(users[id])
-			if messageStashed(users[id]) {
+			text.SetText(nonFriendUsers[id])
+			if messageStashed(nonFriendUsers[id]) {
 				//turn the user blue if we have messages from them
 				text.Importance = widget.HighImportance
 			} else {
@@ -313,7 +360,7 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 		})
 	userList.OnSelected = func(id widget.ListItemID) {
 		//setting global scoped var
-		targetUser = users[id]
+		targetUser = nonFriendUsers[id]
 		//dont show as selected
 		userList.UnselectAll()
 
@@ -328,7 +375,66 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 		postStashedMessages(targetUser)
 	}
 
-	onlineUsers.Add(userList)
+	// add friendList panel to show and select users
+	//build our friends list
+	friendList := widget.NewList(
+		//length
+		func() int {
+			return len(friendUsers)
+		},
+		//create Item
+		func() fyne.CanvasObject {
+			label := widget.NewLabel("Text")
+			return container.NewBorder(nil, nil, nil, nil, label)
+		},
+		//updateItem
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			text := obj.(*fyne.Container).Objects[0].(*widget.Label)
+			text.SetText(friendUsers[id])
+			if messageStashed(friendUsers[id]) {
+				//turn the user blue if we have messages from them
+				text.Importance = widget.HighImportance
+			} else {
+				//reset user text
+				text.Importance = widget.MediumImportance
+				if !isActive(friendUsers[id]) {
+					text.Importance = widget.LowImportance
+				}
+			}
+		})
+	friendList.OnSelected = func(id widget.ListItemID) {
+		//setting global scoped var
+		targetUser = friendUsers[id]
+		//dont show as selected
+		friendList.UnselectAll()
+
+		//create the new chan for the user here if not exists
+		_, ok := chanMap.Load(targetUser)
+		if ok {
+			return
+		}
+		ch := make(chan Post)
+		chanMap.Store(targetUser, ch)
+		newConvoWin(logger, myApp, targetUser, ch)
+		postStashedMessages(targetUser)
+	}
+
+	friendButton := widget.NewButton("Manage Friends", func() {
+		manageFriendsWin(logger, myApp)
+	})
+	friendButton.Importance = widget.LowImportance
+	friendText := widget.NewLabelWithStyle("Friends", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	userContainer := container.NewMax(userList)
+	friendContainer := container.NewMax(friendList)
+	friendContainer = container.NewBorder(friendText, friendButton, nil, nil, friendContainer)
+	onlineUsers := container.NewVSplit(userContainer, friendContainer)
+	onlineUsers.SetOffset(.6)
+
+	//setUp friendUsers slices here
+	friendUsers, _ = getFriends(logger)
+	tmpFriendUsers = friendUsers
+	//add a goroutine here to read ExchangeAPI for live users and populate with labels
+	go refreshUsers(logger, userContainer, friendContainer)
 
 	//add container to hold the users list
 	bLine2 := canvas.NewLine(color.RGBA{0, 0, 0, 255})
@@ -403,6 +509,23 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	myWindow.SetContent(finalContainer)
 	myWindow.Resize(fyne.NewSize(200, 600))
 	myWindow.Show()
+
+	if !binIsCurrent(logger) {
+		logger.Debug("Bin is not current!")
+		verWindow := myApp.NewWindow("Important Information")
+		verWindow.CenterOnScreen()
+		cont := container.NewVBox()
+		cont.Add(widget.NewLabel("A new version of the EW_Messenger is available."))
+		u, _ := url.Parse("https://endlesswaltz.xyz/downloads")
+		linkLabel := widget.NewHyperlinkWithStyle("Download the new version here.", u, fyne.TextAlignCenter, fyne.TextStyle{})
+		cont.Add(linkLabel)
+		verWindow.SetContent(cont)
+		verWindow.Show()
+		verWindow.RequestFocus()
+
+	} else {
+		logger.Debug("Bin IS current!")
+	}
 }
 
 func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan chan Post) {
@@ -459,6 +582,64 @@ func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan ch
 	myWindow.Show()
 }
 
+func manageFriendsWin(logger *logrus.Logger, myApp fyne.App) {
+	myWindow := myApp.NewWindow("Manage Friends")
+
+	//allUsers []string{}
+	allUsers, _ := getAllUsers(logger)
+	//var cvObj *fyne.Container
+
+	userList := widget.NewList(
+		//length
+		func() int {
+			return len(allUsers)
+		},
+		//create Item
+		func() fyne.CanvasObject {
+			label := widget.NewLabel("Text")
+			return container.NewBorder(nil, nil, nil, nil, label)
+		},
+		//updateItem
+		func(id widget.ListItemID, obj fyne.CanvasObject) {
+			text := obj.(*fyne.Container).Objects[0].(*widget.Label)
+			text.SetText(allUsers[id])
+			if isTmpFriend(allUsers[id]) {
+				text.Importance = widget.HighImportance
+			} else {
+				text.Importance = widget.MediumImportance
+			}
+		})
+	userList.OnSelected = func(id widget.ListItemID) {
+		if isTmpFriend(allUsers[id]) {
+			var tmp []string
+			for _, user := range tmpFriendUsers {
+				if user != allUsers[id] {
+					tmp = append(tmp, user)
+				}
+			}
+			tmpFriendUsers = tmp
+
+		} else {
+			tmpFriendUsers = append(tmpFriendUsers, allUsers[id])
+		}
+		fmt.Println(friendUsers)
+		userList.UnselectAll()
+		userList.Refresh()
+	}
+
+	submitButton := widget.NewButton("Submit", func() {
+		//POST new user list and close the window
+		putFriends(logger)
+		myWindow.Close()
+	})
+	activeText := widget.NewLabelWithStyle("Available Users", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	allContainer := container.NewMax(userList)
+	allContainer = container.NewBorder(activeText, submitButton, nil, nil, allContainer)
+	myWindow.SetContent(allContainer)
+	myWindow.Resize(fyne.NewSize(250, 450))
+	myWindow.Show()
+}
+
 func main() {
 	//globalConfig stuff
 	globalConfig = fetchConfig()
@@ -481,16 +662,9 @@ func main() {
 		dialog.ShowCustomConfirm("", "Log In", "Cancel", content, func(b bool) {
 			logger.Debug("Checking creds...")
 
-			//create our hasher to hash our pass
-			hash := sha512.New()
-			hash.Write([]byte(password.Text))
-			hashSum := hash.Sum(nil)
-			hashString := hex.EncodeToString(hashSum)
-
 			//set values we just took in with login widget
 			globalConfig.User = strings.ToLower(username.Text)
-			globalConfig.Passwd = hashString
-			logger.Debug(hashString)
+			globalConfig.Passwd = password.Text
 
 			//pass the hash lol
 			ok, err := checkCreds()
