@@ -1,13 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
-	"bytes"
 )
 
 func removeIndex(s []string, index int) []string {
@@ -90,15 +90,15 @@ func getFriends(logger *logrus.Logger) ([]string, error) {
 
 func putFriends(logger *logrus.Logger) error {
 	var final string
-	for _, user := range friendUsers {
+	for _, user := range tmpFriendUsers {
 		user = strings.Replace(user, " ", "", -1)
 		if user != "" && user != globalConfig.User {
 			final = final + user + ":"
 		}
 	}
 
-	payload := []byte(`{"UserList":"` + final + `"}`)
-	logger.Debug("Putting payload to API: ", `{"UserList":"` + final + `"}`)
+	payload := []byte(final)
+	logger.Debug("Putting payload to API: ", final)
 
 	//setup TLS client
 	ts := tlsClient(globalConfig.RandomURL)
@@ -119,7 +119,6 @@ func putFriends(logger *logrus.Logger) error {
 
 	return nil
 }
-
 
 func getExUsers(logger *logrus.Logger) ([]string, error) {
 	//setup TLS client
