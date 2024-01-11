@@ -10,7 +10,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	go.dedis.ch/kyber/v3 v3.1.0
 	golang.org/x/crypto v0.16.0
-	golang.org/x/sync v0.5.0
+	golang.org/x/sync v0.6.0
 )
 
 require (
