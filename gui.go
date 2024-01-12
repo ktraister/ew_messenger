@@ -447,10 +447,10 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	textContainer := container.New(layout.NewCenterLayout(), myText)
 	uTextContainer := container.New(layout.NewCenterLayout(), userText)
 
-	//create proxy status widget
-	pStatus := widget.NewLabelWithStyle("Starting Proxy...", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	pStatus.Importance = widget.LowImportance
-	go proxy(globalConfig, logger, pStatus)
+	//create status button
+	statusButton := widget.NewButton("Status", func() { systemStatus(myApp) })
+	statusButton.Importance = widget.MediumImportance
+	go proxy(logger)
 
 	//toolbar
 	volp := widget.NewProgressBar()
@@ -491,7 +491,7 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	//create container to hold current user/proxy
 	topContainer := container.NewHBox()
 	topContainer = container.NewBorder(nil, nil, nil, sideLine, textContainer)
-	topContainer = container.NewBorder(nil, nil, nil, pStatus, topContainer)
+	topContainer = container.NewBorder(nil, nil, nil, statusButton, topContainer)
 	topContainer = container.NewBorder(nil, bLine2, nil, nil, topContainer)
 	topContainer = container.NewBorder(nil, uTextContainer, nil, nil, topContainer)
 
@@ -527,6 +527,33 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 		logger.Debug("Bin IS current!")
 	}
 }
+
+func systemStatus(myApp fyne.App) {
+	myWindow := myApp.NewWindow("")
+
+	systemCont := container.NewMax()
+	sysGrid := container.New(layout.NewGridLayoutWithColumns(2))
+
+        header := widget.NewLabelWithStyle("Status", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	systemCont.Add(header)
+
+        aStatus := widget.NewLabelWithStyle("GO", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+        aStatus.Importance = widget.HighImportance
+	sysGrid.Add(aStatus)
+        aText := widget.NewLabelWithStyle("API", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	sysGrid.Add(aText)
+
+        pStatus := widget.NewLabelWithStyle("STBY", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+        pStatus.Importance = widget.WarningImportance
+	sysGrid.Add(pStatus)
+        pText := widget.NewLabelWithStyle("Proxy", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	sysGrid.Add(pText)
+
+	systemCont = container.NewBorder(nil, sysGrid, nil, nil, systemCont)
+	myWindow.SetContent(systemCont)
+	myWindow.Show()
+}
+
 
 func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan chan Post) {
 	myWindow := myApp.NewWindow(user)
