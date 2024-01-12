@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
+	"fyne.io/fyne/v2/widget"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 	"io"
@@ -51,6 +52,7 @@ func proxy(logger *logrus.Logger) {
 	logger.Debug("from the API for user acct type: ", uType)
 	if uType != "premium" {
 		logger.Info("Turning proxy off based on config")
+		statusMsgChan <- statusMsg{Target: "Proxy", Text: "STBY", Import: widget.LowImportance, Warn: "Proxy disabled for basic users"}
 		return
 	}
 

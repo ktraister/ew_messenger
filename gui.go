@@ -22,12 +22,6 @@ import (
 	"time"
 )
 
-//this is how you show dialog box
-//dialog.ShowConfirm("foo", "foo", nil, myWindow)
-
-//different layouts avail
-//https://developer.fyne.io/explore/layouts.html#border
-
 var activeUsers = []string{}
 var friendUsers = []string{}
 var nonFriendUsers = []string{}
@@ -36,6 +30,26 @@ var targetUser = ""
 var globalConfig Configurations
 var stashedMessages = syncmap.Map{}
 var chanMap = syncmap.Map{}
+
+// values used to display system status
+var warningCont = container.NewHBox()
+var APITextVal = "GO"
+var APIImport = widget.HighImportance
+var EXTextVal = "GO"
+var EXImport = widget.HighImportance
+var MITMTextVal = "STBY"
+var MITMImport = widget.LowImportance
+var ProxyTextVal = "STBY"
+var ProxyImport = widget.LowImportance
+
+type statusMsg struct {
+	Target string
+	Text   string
+	Import widget.Importance
+	Warn   string
+}
+
+var statusMsgChan = make(chan statusMsg)
 
 // okay you can optimize it
 func cnv(input float64) float64 {
@@ -147,6 +161,29 @@ func msgRouter(logger *logrus.Logger) {
 		logger.Debug("Posting message ", message)
 		ch := v.(chan Post)
 		ch <- message
+	}
+}
+
+// function to control status widgets
+func statusMgr(logger *logrus.Logger) {
+	for {
+		message := <-statusMsgChan
+		myT := message.Target
+		switch myT {
+		case "API":
+			APITextVal = message.Text
+			APIImport = message.Import
+		case "EX":
+			EXTextVal = message.Text
+			EXImport = message.Import
+		case "MITM":
+			MITMTextVal = message.Text
+			MITMImport = message.Import
+		case "PROXY":
+			ProxyTextVal = message.Text
+			ProxyImport = message.Import
+		}
+		warningCont.Add(widget.NewLabel(message.Warn))
 	}
 }
 
@@ -321,6 +358,9 @@ func refreshUsers(logger *logrus.Logger, userContainer *fyne.Container, friendCo
 func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	//goroutine to route messages
 	go msgRouter(logger)
+
+	//statusManager goroutine
+	go statusMgr(logger)
 
 	//setup New window
 	myWindow := myApp.NewWindow("EW Messenger")
@@ -529,31 +569,64 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 }
 
 func systemStatus(myApp fyne.App) {
-	myWindow := myApp.NewWindow("")
+	myWindow := myApp.NewWindow("System Status")
 
-	systemCont := container.NewMax()
+	line0 := canvas.NewLine(color.RGBA{255, 255, 255, 20})
+	line0.StrokeWidth = 0.2
+	line1 := canvas.NewLine(color.RGBA{255, 255, 255, 20})
+	line1.StrokeWidth = 0.2
+	line2 := canvas.NewLine(color.RGBA{255, 255, 255, 20})
+	line2.StrokeWidth = 0.2
+
+	systemCont := container.NewHBox()
 	sysGrid := container.New(layout.NewGridLayoutWithColumns(2))
 
-        header := widget.NewLabelWithStyle("Status", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	header := widget.NewLabelWithStyle("Status", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	systemCont.Add(header)
 
-        aStatus := widget.NewLabelWithStyle("GO", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-        aStatus.Importance = widget.HighImportance
+	aStatus := widget.NewLabelWithStyle(APITextVal, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	aStatus.Importance = APIImport
 	sysGrid.Add(aStatus)
-        aText := widget.NewLabelWithStyle("API", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	aText := widget.NewLabelWithStyle("API", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
 	sysGrid.Add(aText)
 
-        pStatus := widget.NewLabelWithStyle("STBY", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-        pStatus.Importance = widget.WarningImportance
+	eStatus := widget.NewLabelWithStyle(EXTextVal, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	eStatus.Importance = EXImport
+	sysGrid.Add(eStatus)
+	eText := widget.NewLabelWithStyle("Exchange", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	sysGrid.Add(eText)
+
+	mStatus := widget.NewLabelWithStyle(MITMTextVal, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	mStatus.Importance = MITMImport
+	sysGrid.Add(mStatus)
+	mText := widget.NewLabelWithStyle("MITM", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	sysGrid.Add(mText)
+
+	pStatus := widget.NewLabelWithStyle(ProxyTextVal, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	pStatus.Importance = ProxyImport
 	sysGrid.Add(pStatus)
-        pText := widget.NewLabelWithStyle("Proxy", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	pText := widget.NewLabelWithStyle("Proxy", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
 	sysGrid.Add(pText)
 
-	systemCont = container.NewBorder(nil, sysGrid, nil, nil, systemCont)
-	myWindow.SetContent(systemCont)
+	sysCont := container.NewHBox()
+	sysCont.Add(sysGrid)
+
+	warnCont := container.NewHBox()
+	warnDisplayCont := container.NewVScroll(warningCont)
+	warnText := widget.NewLabelWithStyle("Warnings", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	warnCont = container.NewBorder(line2, nil, nil, nil, warnCont)
+	warnCont = container.NewBorder(warnText, nil, nil, nil, warnCont)
+	warnCont = container.NewBorder(nil, warnDisplayCont, nil, nil, warnCont)
+
+	finalCont := container.NewBorder(nil, line0, nil, nil, systemCont)
+	finalCont = container.NewBorder(nil, sysCont, nil, nil, finalCont)
+	finalCont = container.NewBorder(nil, nil, nil, line1, finalCont)
+	finalCont = container.NewBorder(nil, nil, nil, warnCont, finalCont)
+	myWindow.SetContent(finalCont)
+	myWindow.SetFixedSize(true)
+	myWindow.Resize(fyne.NewSize(400, 100))
 	myWindow.Show()
 }
-
 
 func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan chan Post) {
 	myWindow := myApp.NewWindow(user)
