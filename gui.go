@@ -164,11 +164,10 @@ func statusMgr(logger *logrus.Logger) {
 			allowStatusUpdate = false
 		}
 
-		if message.Import == widget.LowImportance {
-			message.Import = widget.MediumImportance
-		}
-
 		if message.Warn != "" {
+			if message.Import == widget.LowImportance {
+				message.Import = widget.MediumImportance
+			}
 			newWidget := widget.NewLabel(message.Warn)
 			newWidget.Importance = message.Import
 			warningCont.Add(newWidget)
@@ -352,6 +351,7 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	//goroutines to check for api and exchange status
 	go apiStatusCheck(logger)
 	go exStatusCheck(logger)
+	go mitmStatusCheck(logger)
 
 	//statusManager goroutine
 	go statusMgr(logger)
@@ -485,7 +485,6 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	statusButton = widget.NewButton("Status", func() { systemStatus(myApp) })
 	statusButton.Importance = widget.SuccessImportance
 	go proxy(logger)
-	go mitm(logger)
 
 	//toolbar
 	volp := widget.NewProgressBar()

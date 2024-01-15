@@ -151,7 +151,6 @@ func putFriends(logger *logrus.Logger) error {
 	_, err = client.Do(req)
 	if err != nil {
 		logger.Error(err)
-		statusMsgChan <- statusMsg{Target: "Proxy", Text: "WARN", Import: widget.HighImportance, Warn: "API Error updating friends list"}
 		return err
 	}
 
@@ -301,7 +300,7 @@ func apiStatusCheck(logger *logrus.Logger) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			logger.Error("apiStatusCheck Request failed with status: %s\n", resp.Status)
+			logger.Error("apiStatusCheck Request failed with status: ", resp.Status)
 			statusMsgChan <- statusMsg{Target: "API", Text: "ERR", Import: widget.DangerImportance, Warn: "API returned bad status code"}
 			healthy = false
 			continue
@@ -364,7 +363,7 @@ func exStatusCheck(logger *logrus.Logger) {
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			logger.Error("exStatusCheck Request failed with status: %s\n", resp.Status)
+			logger.Error("exStatusCheck Request failed with status: ", resp.Status)
 			statusMsgChan <- statusMsg{Target: "EX", Text: "ERR", Import: widget.DangerImportance, Warn: "Exchange returned bad status code"}
 			healthy = false
 			continue

@@ -5,7 +5,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func mitm(logger *logrus.Logger) {
+func mitmStatusCheck(logger *logrus.Logger) {
 	logger.Info("Init MITM thread")
 
 	//check account status first
