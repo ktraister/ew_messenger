@@ -16,17 +16,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/syncmap"
 	"image/color"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
 )
-
-//this is how you show dialog box
-//dialog.ShowConfirm("foo", "foo", nil, myWindow)
-
-//different layouts avail
-//https://developer.fyne.io/explore/layouts.html#border
 
 var activeUsers = []string{}
 var friendUsers = []string{}
@@ -36,6 +29,23 @@ var targetUser = ""
 var globalConfig Configurations
 var stashedMessages = syncmap.Map{}
 var chanMap = syncmap.Map{}
+
+// values used to display system status
+var warningCont = container.NewVBox()
+var statusButton = widget.NewButton("Status", func() {})
+var aStatus = widget.NewLabelWithStyle("GO", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+var eStatus = widget.NewLabelWithStyle("GO", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+var mStatus = widget.NewLabelWithStyle("GO", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+var pStatus = widget.NewLabelWithStyle("GO", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+
+type statusMsg struct {
+	Target string
+	Text   string
+	Import widget.Importance
+	Warn   string
+}
+
+var statusMsgChan = make(chan statusMsg)
 
 // okay you can optimize it
 func cnv(input float64) float64 {
@@ -87,41 +97,6 @@ func isNonFriend(user string) bool {
 	return false
 }
 
-func checkCreds() (bool, string) {
-	//setup tls
-	ts := tlsClient(globalConfig.RandomURL)
-	//check and make sure inserted creds
-	//Random and Exchange will use same mongo, so the creds will be valid for both
-	health_url := fmt.Sprintf("%s%s", globalConfig.RandomURL, "/healthcheck")
-	req, err := http.NewRequest("GET", health_url, nil)
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", globalConfig.User)
-	req.Header.Set("Passwd", globalConfig.Passwd)
-	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
-	resp, err := client.Do(req)
-	errorText := ""
-	if err != nil {
-		errorText = "Couldn't Connect to RandomAPI"
-		fmt.Println(errorText + " " + globalConfig.RandomURL)
-		fmt.Println("Quietly exiting now. Please reconfigure.")
-		return false, errorText
-	}
-	if resp == nil {
-		errorText = "No Response From RandomAPI"
-		fmt.Println(errorText + " " + globalConfig.RandomURL)
-		fmt.Println("Quietly exiting now. Please reconfigure.")
-		return false, errorText
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		errorText = "Invalid Username/Password Combination"
-		fmt.Println(errorText)
-		fmt.Printf("Request failed with status: %s\n", resp.Status)
-		return false, errorText
-	}
-	return true, ""
-}
-
 // this function will route messages from incoming to correct chan
 func msgRouter(logger *logrus.Logger) {
 	for {
@@ -147,6 +122,57 @@ func msgRouter(logger *logrus.Logger) {
 		logger.Debug("Posting message ", message)
 		ch := v.(chan Post)
 		ch <- message
+	}
+}
+
+// function to control status widgets
+func statusMgr(logger *logrus.Logger) {
+	allowStatusUpdate := true
+	for {
+		message := <-statusMsgChan
+
+		if allowStatusUpdate {
+			switch message.Import {
+			case widget.WarningImportance:
+				statusButton.Importance = widget.WarningImportance
+			case widget.DangerImportance:
+				statusButton.Importance = widget.DangerImportance
+			default:
+				statusButton.Importance = widget.SuccessImportance
+			}
+			statusButton.Refresh()
+		}
+
+		myT := message.Target
+		switch myT {
+		case "API":
+			aStatus.Importance = message.Import
+			aStatus.Text = message.Text
+			aStatus.Refresh()
+		case "EX":
+			eStatus.Importance = message.Import
+			eStatus.Text = message.Text
+			eStatus.Refresh()
+		case "MITM":
+			mStatus.Importance = message.Import
+			mStatus.Text = message.Text
+			mStatus.Refresh()
+		case "PROXY":
+			pStatus.Importance = message.Import
+			pStatus.Text = message.Text
+			pStatus.Refresh()
+			allowStatusUpdate = false
+		}
+
+		if message.Warn != "" {
+			if message.Import == widget.LowImportance {
+				message.Import = widget.MediumImportance
+			}
+			newWidget := widget.NewLabel(message.Warn)
+			newWidget.Importance = message.Import
+			warningCont.Add(newWidget)
+
+		}
 	}
 }
 
@@ -322,6 +348,14 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	//goroutine to route messages
 	go msgRouter(logger)
 
+	//goroutines to check for api and exchange status
+	go apiStatusCheck(logger)
+	go exStatusCheck(logger)
+	go mitmStatusCheck(logger)
+
+	//statusManager goroutine
+	go statusMgr(logger)
+
 	//setup New window
 	myWindow := myApp.NewWindow("EW Messenger")
 	myWindow.SetMaster()
@@ -447,10 +481,10 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	textContainer := container.New(layout.NewCenterLayout(), myText)
 	uTextContainer := container.New(layout.NewCenterLayout(), userText)
 
-	//create proxy status widget
-	pStatus := widget.NewLabelWithStyle("Starting Proxy...", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	pStatus.Importance = widget.LowImportance
-	go proxy(globalConfig, logger, pStatus)
+	//create status button -- defined line 37
+	statusButton = widget.NewButton("Status", func() { systemStatus(myApp) })
+	statusButton.Importance = widget.SuccessImportance
+	go proxy(logger)
 
 	//toolbar
 	volp := widget.NewProgressBar()
@@ -491,7 +525,7 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	//create container to hold current user/proxy
 	topContainer := container.NewHBox()
 	topContainer = container.NewBorder(nil, nil, nil, sideLine, textContainer)
-	topContainer = container.NewBorder(nil, nil, nil, pStatus, topContainer)
+	topContainer = container.NewBorder(nil, nil, nil, statusButton, topContainer)
 	topContainer = container.NewBorder(nil, bLine2, nil, nil, topContainer)
 	topContainer = container.NewBorder(nil, uTextContainer, nil, nil, topContainer)
 
@@ -526,6 +560,60 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	} else {
 		logger.Debug("Bin IS current!")
 	}
+}
+
+func systemStatus(myApp fyne.App) {
+	myWindow := myApp.NewWindow("System Status")
+
+	line0 := canvas.NewLine(color.RGBA{255, 255, 255, 20})
+	line0.StrokeWidth = 0.2
+	line1 := canvas.NewLine(color.RGBA{255, 255, 255, 20})
+	line1.StrokeWidth = 0.2
+	line2 := canvas.NewLine(color.RGBA{255, 255, 255, 20})
+	line2.StrokeWidth = 0.2
+
+	systemCont := container.NewHBox()
+	sysGrid := container.New(layout.NewGridLayoutWithColumns(2))
+
+	header := widget.NewLabelWithStyle("Status", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	systemCont.Add(header)
+
+	aStatus.Importance = widget.SuccessImportance
+	sysGrid.Add(aStatus)
+	aText := widget.NewLabelWithStyle("API", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	sysGrid.Add(aText)
+
+	eStatus.Importance = widget.SuccessImportance
+	sysGrid.Add(eStatus)
+	eText := widget.NewLabelWithStyle("Exchange", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	sysGrid.Add(eText)
+
+	sysGrid.Add(mStatus)
+	mText := widget.NewLabelWithStyle("MITM", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	sysGrid.Add(mText)
+
+	sysGrid.Add(pStatus)
+	pText := widget.NewLabelWithStyle("Proxy", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	sysGrid.Add(pText)
+
+	sysCont := container.NewHBox()
+	sysCont.Add(sysGrid)
+
+	warnCont := container.NewHBox()
+	warnDisplayCont := container.NewVScroll(warningCont)
+	warnCont.Add(warnDisplayCont)
+	warnText := widget.NewLabelWithStyle("Warnings", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	warnCont = container.NewBorder(line2, nil, nil, nil, warnCont)
+	warnCont = container.NewBorder(warnText, nil, nil, nil, warnCont)
+
+	finalCont := container.NewBorder(nil, line0, nil, nil, systemCont)
+	finalCont = container.NewBorder(nil, sysCont, nil, nil, finalCont)
+	finalCont = container.NewBorder(nil, nil, nil, line1, finalCont)
+	finalCont = container.NewBorder(nil, nil, nil, warnCont, finalCont)
+	myWindow.SetContent(finalCont)
+	myWindow.SetFixedSize(true)
+	myWindow.Resize(fyne.NewSize(400, 100))
+	myWindow.Show()
 }
 
 func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan chan Post) {

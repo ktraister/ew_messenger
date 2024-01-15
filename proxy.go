@@ -18,12 +18,10 @@ func proxyCheck() bool {
 	return false
 }
 
-func proxyFail(pStatus *widget.Label) {
-	pStatus.Text = "Proxy Error"
-	pStatus.Importance = widget.DangerImportance
-	pStatus.Refresh()
+func proxyFail() {
 	globalConfig.RandomURL = configuredRandomURL
 	globalConfig.ExchangeURL = configuredExchangeURL
+	statusMsgChan <- statusMsg{Target: "PROXY", Text: "WARN", Import: widget.WarningImportance, Warn: "Proxy operation failed. \nTraffic will be routed normally."}
 }
 
 // create human-readable SSH-key strings
@@ -36,36 +34,35 @@ func trustedHostKeyCallback(logger *logrus.Logger, trustedKey string) ssh.HostKe
 		ks := keyString(k)
 		if trustedKey != ks {
 			logger.Error("SSH-key verification FAILED for key: ", keyString(k))
+			proxyFail()
 			return fmt.Errorf("SSH-key verification: expected %q but got %q", trustedKey, ks)
 		}
 		return nil
 	}
 }
 
-func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.Label) {
+func proxy(logger *logrus.Logger) {
 	logger.Info("Init proxy thread")
 
 	//check account status first
 	uType, err := getAcctType(logger)
 	if err != nil {
 		logger.Error("Failed to check account status:", err)
-		proxyFail(pStatus)
+		proxyFail()
 		return
 	}
 	logger.Debug("from the API for user acct type: ", uType)
 	if uType != "premium" {
 		logger.Info("Turning proxy off based on config")
-		pStatus.Text = "Proxy Off"
-		pStatus.Importance = widget.LowImportance
-		pStatus.Refresh()
+		statusMsgChan <- statusMsg{Target: "PROXY", Text: "STBY", Import: widget.LowImportance, Warn: "Proxy disabled for basic users"}
 		return
 	}
 
 	// hard-coding proxy vars, but ingesting creds
-	sshServer := configuration.SSHHost
+	sshServer := globalConfig.SSHHost
 	sshPort := 2222
-	sshUser := configuration.User
-	sshPassword := configuration.Passwd
+	sshUser := globalConfig.User
+	sshPassword := globalConfig.Passwd
 	localPort := 0
 	remoteAddress := "localhost:443"
 
@@ -83,7 +80,7 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 		Auth: []ssh.AuthMethod{
 			ssh.Password(sshPassword),
 		},
-		HostKeyCallback: trustedHostKeyCallback(logger, configuration.SSHKey),
+		HostKeyCallback: trustedHostKeyCallback(logger, globalConfig.SSHKey),
 	}
 	logger.Info("created SSH connection config")
 
@@ -91,7 +88,7 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%d", sshServer, sshPort), config)
 	if err != nil {
 		logger.Error("Failed to dial:", err)
-		proxyFail(pStatus)
+		proxyFail()
 		return
 	}
 	//defer client.Close()
@@ -101,7 +98,7 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 	localListener, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", localPort))
 	if err != nil {
 		logger.Error("Failed to listen on local port:", err)
-		proxyFail(pStatus)
+		proxyFail()
 		return
 	}
 	defer localListener.Close()
@@ -111,16 +108,14 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 	globalConfig.ExchangeURL = fmt.Sprintf("wss://localhost:%d/ws", proxyPort)
 
 	logger.Info(fmt.Sprintf("Local port forwarding started on port %d...", proxyPort))
-	pStatus.Text = "Proxy Up!"
-	pStatus.Importance = widget.HighImportance
-	pStatus.Refresh()
+	statusMsgChan <- statusMsg{Target: "PROXY", Text: "GO", Import: widget.SuccessImportance, Warn: ""}
 
 	// Accept incoming connections on local port
 	for {
 		localConn, err := localListener.Accept()
 		if err != nil {
 			logger.Error("Failed to accept incoming connection:", err)
-			proxyFail(pStatus)
+			proxyFail()
 			return
 		}
 
@@ -128,7 +123,7 @@ func proxy(configuration Configurations, logger *logrus.Logger, pStatus *widget.
 		remoteConn, err := client.Dial("tcp", remoteAddress)
 		if err != nil {
 			logger.Error("Failed to dial remote address:", err)
-			proxyFail(pStatus)
+			proxyFail()
 			return
 		}
 
