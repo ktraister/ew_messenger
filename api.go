@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"fyne.io/fyne/v2/widget"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
@@ -12,6 +14,41 @@ import (
 
 func removeIndex(s []string, index int) []string {
 	return append(s[:index], s[index+1:]...)
+}
+
+func checkCreds() (bool, string) {
+	//setup tls
+	ts := tlsClient(globalConfig.RandomURL)
+	//check and make sure inserted creds
+	//Random and Exchange will use same mongo, so the creds will be valid for both
+	health_url := fmt.Sprintf("%s%s", globalConfig.RandomURL, "/healthcheck")
+	req, err := http.NewRequest("GET", health_url, nil)
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("User", globalConfig.User)
+	req.Header.Set("Passwd", globalConfig.Passwd)
+	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	resp, err := client.Do(req)
+	errorText := ""
+	if err != nil {
+		errorText = "Couldn't Connect to RandomAPI"
+		fmt.Println(errorText + " " + globalConfig.RandomURL)
+		fmt.Println("Quietly exiting now. Please reconfigure.")
+		return false, errorText
+	}
+	if resp == nil {
+		errorText = "No Response From RandomAPI"
+		fmt.Println(errorText + " " + globalConfig.RandomURL)
+		fmt.Println("Quietly exiting now. Please reconfigure.")
+		return false, errorText
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		errorText = "Invalid Username/Password Combination"
+		fmt.Println(errorText)
+		fmt.Printf("Request failed with status: %s\n", resp.Status)
+		return false, errorText
+	}
+	return true, ""
 }
 
 func getAllUsers(logger *logrus.Logger) ([]string, error) {
@@ -114,6 +151,7 @@ func putFriends(logger *logrus.Logger) error {
 	_, err = client.Do(req)
 	if err != nil {
 		logger.Error(err)
+		statusMsgChan <- statusMsg{Target: "Proxy", Text: "WARN", Import: widget.HighImportance, Warn: "API Error updating friends list"}
 		return err
 	}
 
@@ -163,23 +201,31 @@ func getAcctType(logger *logrus.Logger) (string, error) {
 
 	urlSlice := strings.Split(globalConfig.ExchangeURL, "/")
 	url := "https://" + urlSlice[2] + "/api/premiumCheck"
-	req, err := http.NewRequest("GET", url, nil)
+	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
 	req.Header.Set("Passwd", globalConfig.Passwd)
 	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
-	resp, err := client.Do(req)
-	if err != nil {
-		logger.Error(err)
-		return "woops", err
-	}
-	output, err := io.ReadAll(resp.Body)
-	if err != nil {
-		logger.Error(err)
-		return "woops", err
+	var final string
+	for i := 0; i <= 3; i++ {
+		resp, err := client.Do(req)
+		if err != nil {
+			logger.Error(err)
+			return "woops", err
+		}
+		output, err := io.ReadAll(resp.Body)
+		if err != nil {
+			logger.Error(err)
+			return "woops", err
+		}
+		final = string(output)
+		if final == "premium" || final == "basic" {
+			break
+		}
+		time.Sleep(1 * time.Second)
 	}
 
-	return string(output), nil
+	return final, nil
 }
 
 func binIsCurrent(logger *logrus.Logger) bool {
@@ -203,11 +249,139 @@ func binIsCurrent(logger *logrus.Logger) bool {
 		logger.Error(err)
 		return false
 	}
+
 	output, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
+
 	if err != nil {
 		logger.Error(err)
 		return false
 	}
 
 	return globalConfig.BinVersion == string(output)
+}
+
+func apiStatusCheck(logger *logrus.Logger) {
+	//setup tls
+	ts := tlsClient(globalConfig.RandomURL)
+	//check and make sure inserted creds
+	//Random and Exchange will use same mongo, so the creds will be valid for both
+	health_url := fmt.Sprintf("%s%s", globalConfig.RandomURL, "/healthcheck")
+	req, _ := http.NewRequest("GET", health_url, nil)
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("User", globalConfig.User)
+	req.Header.Set("Passwd", globalConfig.Passwd)
+	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	healthy := true
+
+	for {
+		time.Sleep(10 * time.Second)
+		resp, err := client.Do(req)
+		if err != nil {
+			logger.Error("apiStatusCheck Couldn't Connect to RandomAPI")
+			statusMsgChan <- statusMsg{Target: "API", Text: "ERR", Import: widget.DangerImportance, Warn: "Unable to connect to API"}
+			healthy = false
+			continue
+		}
+		if resp == nil {
+			logger.Error("apiStatusCheck got no response")
+			statusMsgChan <- statusMsg{Target: "API", Text: "ERR", Import: widget.DangerImportance, Warn: "No response from API"}
+			healthy = false
+			continue
+		}
+
+		output, err := io.ReadAll(resp.Body)
+		if err != nil {
+			logger.Error("apiStatusCheck error reading data from RandomAPI")
+			statusMsgChan <- statusMsg{Target: "API", Text: "ERR", Import: widget.DangerImportance, Warn: "Unable to read API data"}
+			healthy = false
+			continue
+		}
+
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			logger.Error("apiStatusCheck Request failed with status: %s\n", resp.Status)
+			statusMsgChan <- statusMsg{Target: "API", Text: "ERR", Import: widget.DangerImportance, Warn: "API returned bad status code"}
+			healthy = false
+			continue
+		}
+
+		if string(output) != "HEALTHY" {
+			logger.Warn("apiStatusCheck Request did not get programmed response")
+			statusMsgChan <- statusMsg{Target: "API", Text: "WARN", Import: widget.WarningImportance, Warn: "API returned bad check value"}
+			healthy = false
+			continue
+		} else {
+			if healthy == false {
+				statusMsgChan <- statusMsg{Target: "API", Text: "GO", Import: widget.SuccessImportance, Warn: "API recovered"}
+				healthy = true
+			} else {
+				statusMsgChan <- statusMsg{Target: "API", Text: "GO", Import: widget.SuccessImportance, Warn: ""}
+			}
+		}
+	}
+}
+
+func exStatusCheck(logger *logrus.Logger) {
+	//setup tls
+	ts := tlsClient(globalConfig.ExchangeURL)
+	//check and make sure inserted creds
+	//Random and EXchange will use same mongo, so the creds will be valid for both
+	health_url := fmt.Sprintf("%s%s", strings.Replace(globalConfig.RandomURL, "api", "ws", -1), "/healthcheck")
+	logger.Debug(health_url)
+	req, _ := http.NewRequest("GET", health_url, nil)
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("User", globalConfig.User)
+	req.Header.Set("Passwd", globalConfig.Passwd)
+	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	healthy := true
+
+	for {
+		time.Sleep(10 * time.Second)
+		resp, err := client.Do(req)
+		if err != nil {
+			logger.Error("exStatusCheck Couldn't Connect to Exchange")
+			statusMsgChan <- statusMsg{Target: "EX", Text: "ERR", Import: widget.DangerImportance, Warn: "Unable to connect to Exchange"}
+			healthy = false
+			continue
+		}
+		if resp == nil {
+			logger.Error("exStatusCheck got no response")
+			statusMsgChan <- statusMsg{Target: "EX", Text: "ERR", Import: widget.DangerImportance, Warn: "No response from Exchange"}
+			healthy = false
+			continue
+		}
+
+		output, err := io.ReadAll(resp.Body)
+		if err != nil {
+			logger.Error("exStatusCheck error reading data from Exchange")
+			statusMsgChan <- statusMsg{Target: "EX", Text: "ERR", Import: widget.DangerImportance, Warn: "Unable to read Exchange data"}
+			healthy = false
+			continue
+		}
+
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			logger.Error("exStatusCheck Request failed with status: %s\n", resp.Status)
+			statusMsgChan <- statusMsg{Target: "EX", Text: "ERR", Import: widget.DangerImportance, Warn: "Exchange returned bad status code"}
+			healthy = false
+			continue
+		}
+
+		if string(output) != "HEALTHY" {
+			logger.Warn("exStatusCheck Request did not get programmed response")
+			statusMsgChan <- statusMsg{Target: "EX", Text: "WARN", Import: widget.WarningImportance, Warn: "Exchange returned bad check value"}
+			healthy = false
+			continue
+		} else {
+			if healthy == false {
+				statusMsgChan <- statusMsg{Target: "EX", Text: "GO", Import: widget.SuccessImportance, Warn: "Exchange recovered"}
+				healthy = true
+			} else {
+				statusMsgChan <- statusMsg{Target: "EX", Text: "GO", Import: widget.SuccessImportance, Warn: ""}
+			}
+		}
+	}
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/syncmap"
 	"image/color"
-	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -32,15 +31,12 @@ var stashedMessages = syncmap.Map{}
 var chanMap = syncmap.Map{}
 
 // values used to display system status
-var warningCont = container.NewHBox()
-var APITextVal = "GO"
-var APIImport = widget.HighImportance
-var EXTextVal = "GO"
-var EXImport = widget.HighImportance
-var MITMTextVal = "STBY"
-var MITMImport = widget.LowImportance
-var ProxyTextVal = "STBY"
-var ProxyImport = widget.LowImportance
+var warningCont = container.NewVBox()
+var statusButton = widget.NewButton("Status", func() {})
+var aStatus = widget.NewLabelWithStyle("GO", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+var eStatus = widget.NewLabelWithStyle("GO", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+var mStatus = widget.NewLabelWithStyle("STBY", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+var pStatus = widget.NewLabelWithStyle("STBY", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
 type statusMsg struct {
 	Target string
@@ -101,41 +97,6 @@ func isNonFriend(user string) bool {
 	return false
 }
 
-func checkCreds() (bool, string) {
-	//setup tls
-	ts := tlsClient(globalConfig.RandomURL)
-	//check and make sure inserted creds
-	//Random and Exchange will use same mongo, so the creds will be valid for both
-	health_url := fmt.Sprintf("%s%s", globalConfig.RandomURL, "/healthcheck")
-	req, err := http.NewRequest("GET", health_url, nil)
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", globalConfig.User)
-	req.Header.Set("Passwd", globalConfig.Passwd)
-	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
-	resp, err := client.Do(req)
-	errorText := ""
-	if err != nil {
-		errorText = "Couldn't Connect to RandomAPI"
-		fmt.Println(errorText + " " + globalConfig.RandomURL)
-		fmt.Println("Quietly exiting now. Please reconfigure.")
-		return false, errorText
-	}
-	if resp == nil {
-		errorText = "No Response From RandomAPI"
-		fmt.Println(errorText + " " + globalConfig.RandomURL)
-		fmt.Println("Quietly exiting now. Please reconfigure.")
-		return false, errorText
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		errorText = "Invalid Username/Password Combination"
-		fmt.Println(errorText)
-		fmt.Printf("Request failed with status: %s\n", resp.Status)
-		return false, errorText
-	}
-	return true, ""
-}
-
 // this function will route messages from incoming to correct chan
 func msgRouter(logger *logrus.Logger) {
 	for {
@@ -168,22 +129,47 @@ func msgRouter(logger *logrus.Logger) {
 func statusMgr(logger *logrus.Logger) {
 	for {
 		message := <-statusMsgChan
+		logger.Debug("Got msg -> ", message)
 		myT := message.Target
 		switch myT {
 		case "API":
-			APITextVal = message.Text
-			APIImport = message.Import
+			aStatus.Importance = message.Import
+			aStatus.Text = message.Text
+			aStatus.Refresh()
 		case "EX":
-			EXTextVal = message.Text
-			EXImport = message.Import
+			eStatus.Importance = message.Import
+			eStatus.Text = message.Text
+			eStatus.Refresh()
 		case "MITM":
-			MITMTextVal = message.Text
-			MITMImport = message.Import
+			mStatus.Importance = message.Import
+			mStatus.Text = message.Text
+			mStatus.Refresh()
 		case "PROXY":
-			ProxyTextVal = message.Text
-			ProxyImport = message.Import
+			pStatus.Importance = message.Import
+			pStatus.Text = message.Text
+			pStatus.Refresh()
 		}
-		warningCont.Add(widget.NewLabel(message.Warn))
+
+		if message.Import == widget.LowImportance {
+			message.Import = widget.MediumImportance
+		}
+
+		switch message.Import {
+		case widget.WarningImportance:
+			statusButton.Importance = widget.WarningImportance
+		case widget.DangerImportance:
+			statusButton.Importance = widget.DangerImportance
+		default:
+			statusButton.Importance = widget.SuccessImportance
+		}
+		statusButton.Refresh()
+
+		if message.Warn != "" {
+			newWidget := widget.NewLabel(message.Warn)
+			newWidget.Importance = message.Import
+			warningCont.Add(newWidget)
+
+		}
 	}
 }
 
@@ -359,6 +345,10 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	//goroutine to route messages
 	go msgRouter(logger)
 
+	//goroutines to check for api and exchange status
+	go apiStatusCheck(logger)
+	go exStatusCheck(logger)
+
 	//statusManager goroutine
 	go statusMgr(logger)
 
@@ -487,10 +477,11 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	textContainer := container.New(layout.NewCenterLayout(), myText)
 	uTextContainer := container.New(layout.NewCenterLayout(), userText)
 
-	//create status button
-	statusButton := widget.NewButton("Status", func() { systemStatus(myApp) })
-	statusButton.Importance = widget.MediumImportance
+	//create status button -- defined line 37
+	statusButton = widget.NewButton("Status", func() { systemStatus(myApp) })
+	statusButton.Importance = widget.SuccessImportance
 	go proxy(logger)
+	go mitm(logger)
 
 	//toolbar
 	volp := widget.NewProgressBar()
@@ -584,26 +575,23 @@ func systemStatus(myApp fyne.App) {
 	header := widget.NewLabelWithStyle("Status", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	systemCont.Add(header)
 
-	aStatus := widget.NewLabelWithStyle(APITextVal, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	aStatus.Importance = APIImport
+	aStatus.Importance = widget.SuccessImportance
 	sysGrid.Add(aStatus)
 	aText := widget.NewLabelWithStyle("API", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
 	sysGrid.Add(aText)
 
-	eStatus := widget.NewLabelWithStyle(EXTextVal, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	eStatus.Importance = EXImport
+	eStatus.Importance = widget.SuccessImportance
 	sysGrid.Add(eStatus)
 	eText := widget.NewLabelWithStyle("Exchange", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
 	sysGrid.Add(eText)
 
-	mStatus := widget.NewLabelWithStyle(MITMTextVal, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	mStatus.Importance = MITMImport
+	mStatus.Importance = widget.LowImportance
+
 	sysGrid.Add(mStatus)
 	mText := widget.NewLabelWithStyle("MITM", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
 	sysGrid.Add(mText)
 
-	pStatus := widget.NewLabelWithStyle(ProxyTextVal, fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	pStatus.Importance = ProxyImport
+	pStatus.Importance = widget.LowImportance
 	sysGrid.Add(pStatus)
 	pText := widget.NewLabelWithStyle("Proxy", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
 	sysGrid.Add(pText)
@@ -613,10 +601,10 @@ func systemStatus(myApp fyne.App) {
 
 	warnCont := container.NewHBox()
 	warnDisplayCont := container.NewVScroll(warningCont)
+	warnCont.Add(warnDisplayCont)
 	warnText := widget.NewLabelWithStyle("Warnings", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
 	warnCont = container.NewBorder(line2, nil, nil, nil, warnCont)
 	warnCont = container.NewBorder(warnText, nil, nil, nil, warnCont)
-	warnCont = container.NewBorder(nil, warnDisplayCont, nil, nil, warnCont)
 
 	finalCont := container.NewBorder(nil, line0, nil, nil, systemCont)
 	finalCont = container.NewBorder(nil, sysCont, nil, nil, finalCont)

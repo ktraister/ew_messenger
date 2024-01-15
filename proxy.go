@@ -52,7 +52,7 @@ func proxy(logger *logrus.Logger) {
 	logger.Debug("from the API for user acct type: ", uType)
 	if uType != "premium" {
 		logger.Info("Turning proxy off based on config")
-		statusMsgChan <- statusMsg{Target: "Proxy", Text: "STBY", Import: widget.LowImportance, Warn: "Proxy disabled for basic users"}
+		statusMsgChan <- statusMsg{Target: "PROXY", Text: "STBY", Import: widget.LowImportance, Warn: "Proxy disabled for basic users"}
 		return
 	}
 
@@ -106,7 +106,7 @@ func proxy(logger *logrus.Logger) {
 	globalConfig.ExchangeURL = fmt.Sprintf("wss://localhost:%d/ws", proxyPort)
 
 	logger.Info(fmt.Sprintf("Local port forwarding started on port %d...", proxyPort))
-	//pStatus.Text = "Proxy Up!"
+	statusMsgChan <- statusMsg{Target: "PROXY", Text: "GO", Import: widget.SuccessImportance, Warn: ""}
 
 	// Accept incoming connections on local port
 	for {
