@@ -35,8 +35,8 @@ var warningCont = container.NewVBox()
 var statusButton = widget.NewButton("Status", func() {})
 var aStatus = widget.NewLabelWithStyle("GO", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 var eStatus = widget.NewLabelWithStyle("GO", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-var mStatus = widget.NewLabelWithStyle("STBY", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-var pStatus = widget.NewLabelWithStyle("STBY", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+var mStatus = widget.NewLabelWithStyle("GO", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+var pStatus = widget.NewLabelWithStyle("GO", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
 type statusMsg struct {
 	Target string
@@ -127,9 +127,22 @@ func msgRouter(logger *logrus.Logger) {
 
 // function to control status widgets
 func statusMgr(logger *logrus.Logger) {
+	allowStatusUpdate := true
 	for {
 		message := <-statusMsgChan
-		logger.Debug("Got msg -> ", message)
+
+		if allowStatusUpdate {
+			switch message.Import {
+			case widget.WarningImportance:
+				statusButton.Importance = widget.WarningImportance
+			case widget.DangerImportance:
+				statusButton.Importance = widget.DangerImportance
+			default:
+				statusButton.Importance = widget.SuccessImportance
+			}
+			statusButton.Refresh()
+		}
+
 		myT := message.Target
 		switch myT {
 		case "API":
@@ -148,21 +161,12 @@ func statusMgr(logger *logrus.Logger) {
 			pStatus.Importance = message.Import
 			pStatus.Text = message.Text
 			pStatus.Refresh()
+			allowStatusUpdate = false
 		}
 
 		if message.Import == widget.LowImportance {
 			message.Import = widget.MediumImportance
 		}
-
-		switch message.Import {
-		case widget.WarningImportance:
-			statusButton.Importance = widget.WarningImportance
-		case widget.DangerImportance:
-			statusButton.Importance = widget.DangerImportance
-		default:
-			statusButton.Importance = widget.SuccessImportance
-		}
-		statusButton.Refresh()
 
 		if message.Warn != "" {
 			newWidget := widget.NewLabel(message.Warn)
@@ -585,13 +589,10 @@ func systemStatus(myApp fyne.App) {
 	eText := widget.NewLabelWithStyle("Exchange", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
 	sysGrid.Add(eText)
 
-	mStatus.Importance = widget.LowImportance
-
 	sysGrid.Add(mStatus)
 	mText := widget.NewLabelWithStyle("MITM", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
 	sysGrid.Add(mText)
 
-	pStatus.Importance = widget.LowImportance
 	sysGrid.Add(pStatus)
 	pText := widget.NewLabelWithStyle("Proxy", fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
 	sysGrid.Add(pText)

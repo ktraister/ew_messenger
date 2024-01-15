@@ -21,6 +21,7 @@ func proxyCheck() bool {
 func proxyFail() {
 	globalConfig.RandomURL = configuredRandomURL
 	globalConfig.ExchangeURL = configuredExchangeURL
+	statusMsgChan <- statusMsg{Target: "PROXY", Text: "WARN", Import: widget.WarningImportance, Warn: "Proxy operation failed. \nTraffic will be routed normally."}
 }
 
 // create human-readable SSH-key strings
@@ -33,6 +34,7 @@ func trustedHostKeyCallback(logger *logrus.Logger, trustedKey string) ssh.HostKe
 		ks := keyString(k)
 		if trustedKey != ks {
 			logger.Error("SSH-key verification FAILED for key: ", keyString(k))
+			proxyFail()
 			return fmt.Errorf("SSH-key verification: expected %q but got %q", trustedKey, ks)
 		}
 		return nil
