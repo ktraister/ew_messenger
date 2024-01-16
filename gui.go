@@ -30,6 +30,10 @@ var globalConfig Configurations
 var stashedMessages = syncmap.Map{}
 var chanMap = syncmap.Map{}
 
+var helpLock = false
+var statusLock = false
+var friendsLock = false
+
 // values used to display system status
 var warningCont = container.NewVBox()
 var statusButton = widget.NewButton("Status", func() {})
@@ -491,7 +495,7 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	volp.SetValue(cnv(volume))
 	toolbar := widget.NewToolbar(
 		widget.NewToolbarAction(theme.HelpIcon(), func() {
-			logger.Debug("help!")
+			help(myApp)
 		}),
 		widget.NewToolbarSeparator(),
 		widget.NewToolbarAction(theme.VolumeDownIcon(), func() {
@@ -562,7 +566,67 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	}
 }
 
+func help(myApp fyne.App) {
+	if helpLock {
+		return
+	}
+
+	helpLock = true
+
+	myWindow := myApp.NewWindow("Help")
+
+	helpCont := container.NewVBox()
+	helpDisplayCont := container.NewVScroll(helpCont)
+	helpText := widget.NewLabelWithStyle("EW Messenger Help", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	helpCont.Add(helpText)
+	mainWindow := widget.NewLabelWithStyle("The Main Window", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	helpCont.Add(mainWindow)
+	topLine := widget.NewLabelWithStyle(`The top line of the main messenger window allows for sound configuration. From left to right, the buttons allow you to lower and raise volume; volume display, and alert sound selection. You can also choose to mute the application in the sound dropdown`, fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	topLine.Wrapping = fyne.TextWrapWord
+	helpCont.Add(topLine)
+
+	line2 := widget.NewLabelWithStyle(`The second line displays the logged in user's username, next to a status button. This button will change colors depending on the status of the messenger and messenger infrastructure. Clicking the button will show a status window, displaying granular system status and any error messages.`, fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	line2.Wrapping = fyne.TextWrapWord
+	helpCont.Add(line2)
+
+	line3 := widget.NewLabelWithStyle(`The "Online Users" portion of the panel shows all users currently logged on to the exchange. A user who has sent you a message will appear blue, while any other user will appear white.`, fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	line3.Wrapping = fyne.TextWrapWord
+	helpCont.Add(line3)
+
+	line4 := widget.NewLabelWithStyle(`The "Friends" portion of the panel shows all users you have added to your friends list. To manage your friends list, click the "Manage Friends" button at the bottom of the main panel. Another window will open, allowing you to select or deselect any existing user to be part of your friends list. Any of your friends who has sent you a message will appear to be blue.`, fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	line4.Wrapping = fyne.TextWrapWord
+	helpCont.Add(line4)
+
+	messengerWindow := widget.NewLabelWithStyle("Sending Messages", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	helpCont.Add(messengerWindow)
+	line5 := widget.NewLabelWithStyle(`To send a message, click on your target username. A new window will open, allowing you to send message to and receive messages from the target user.`, fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	line5.Wrapping = fyne.TextWrapWord
+	helpCont.Add(line5)
+
+	line6 := widget.NewLabelWithStyle(`When you close the message window, you will lose your current chat history.`, fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	line6.Wrapping = fyne.TextWrapWord
+	helpCont.Add(line6)
+
+	line7 := widget.NewLabelWithStyle(`To send messages without hitting "Send", use the combination "Shift+Enter". Emojis can be entered with the emoji keyboard button, or by typing the emoji name - EX:":grin:"`, fyne.TextAlignLeading, fyne.TextStyle{Bold: false})
+	line7.Wrapping = fyne.TextWrapWord
+	helpCont.Add(line7)
+
+	myWindow.SetContent(helpDisplayCont)
+	myWindow.SetFixedSize(true)
+	myWindow.Resize(fyne.NewSize(300, 300))
+	myWindow.SetOnClosed(func() {
+		helpLock = false
+	})
+	myWindow.Show()
+}
+
 func systemStatus(myApp fyne.App) {
+	if statusLock {
+		return
+	}
+
+	statusLock = true
+
 	myWindow := myApp.NewWindow("System Status")
 
 	line0 := canvas.NewLine(color.RGBA{255, 255, 255, 20})
@@ -602,7 +666,7 @@ func systemStatus(myApp fyne.App) {
 	warnCont := container.NewHBox()
 	warnDisplayCont := container.NewVScroll(warningCont)
 	warnCont.Add(warnDisplayCont)
-	warnText := widget.NewLabelWithStyle("Warnings", fyne.TextAlignLeading, fyne.TextStyle{Bold: true})
+	warnText := widget.NewLabelWithStyle("Warnings", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 	warnCont = container.NewBorder(line2, nil, nil, nil, warnCont)
 	warnCont = container.NewBorder(warnText, nil, nil, nil, warnCont)
 
@@ -613,6 +677,9 @@ func systemStatus(myApp fyne.App) {
 	myWindow.SetContent(finalCont)
 	myWindow.SetFixedSize(true)
 	myWindow.Resize(fyne.NewSize(400, 100))
+	myWindow.SetOnClosed(func() {
+		statusLock = false
+	})
 	myWindow.Show()
 }
 
@@ -671,6 +738,12 @@ func newConvoWin(logger *logrus.Logger, myApp fyne.App, user string, userChan ch
 }
 
 func manageFriendsWin(logger *logrus.Logger, myApp fyne.App) {
+	if friendsLock {
+		return
+	}
+
+	friendsLock = true
+
 	myWindow := myApp.NewWindow("Manage Friends")
 
 	//allUsers []string{}
@@ -725,6 +798,9 @@ func manageFriendsWin(logger *logrus.Logger, myApp fyne.App) {
 	allContainer = container.NewBorder(activeText, submitButton, nil, nil, allContainer)
 	myWindow.SetContent(allContainer)
 	myWindow.Resize(fyne.NewSize(250, 450))
+	myWindow.SetOnClosed(func() {
+		friendsLock = false
+	})
 	myWindow.Show()
 }
 
