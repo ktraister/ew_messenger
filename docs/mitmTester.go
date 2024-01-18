@@ -9,7 +9,7 @@ import (
 
 func main() {
 	// Specify the domain for which you want to check the certificate
-	domain := "localhost"
+	domain := "endlesswaltz.xyz"
 
 	ts := &tls.Config{
 		InsecureSkipVerify: true,

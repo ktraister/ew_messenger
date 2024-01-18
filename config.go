@@ -34,11 +34,11 @@ func fetchConfig() Configurations {
 		LogLevel:    "Error",
 		BinVersion:  "REPLACEME",
 		CertData: CertData{
-			"CN=Deathscyth,OU=XXXG-01D,O=OperationMeteor,L=ESUN,ST=SancKingdom,C=EW",
-			"CN=Deathscyth,OU=XXXG-01D,O=OperationMeteor,L=ESUN,ST=SancKingdom,C=EW",
-			"",
+			"CN=endlesswaltz.xyz",
+			"CN=R3,O=Let's Encrypt,C=US",
+			"[*.endlesswaltz.xyz endlesswaltz.xyz]",
 			"SHA256-RSA",
-			"RSA",
+			"ECDSA",
 		},
 	}
 	/*
