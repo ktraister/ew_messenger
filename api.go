@@ -18,10 +18,10 @@ func removeIndex(s []string, index int) []string {
 
 func checkCreds() (bool, string) {
 	//setup tls
-	ts := tlsClient(globalConfig.RandomURL)
+	ts := tlsClient(globalConfig.PrimaryURL)
 	//check and make sure inserted creds
 	//Random and Exchange will use same mongo, so the creds will be valid for both
-	health_url := fmt.Sprintf("%s%s", globalConfig.RandomURL, "/healthcheck")
+	health_url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "healthcheck")
 	req, err := http.NewRequest("GET", health_url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
@@ -31,13 +31,13 @@ func checkCreds() (bool, string) {
 	errorText := ""
 	if err != nil {
 		errorText = "Couldn't Connect to RandomAPI"
-		fmt.Println(errorText + " " + globalConfig.RandomURL)
+		fmt.Println(errorText + " " + health_url)
 		fmt.Println("Quietly exiting now. Please reconfigure.")
 		return false, errorText
 	}
 	if resp == nil {
 		errorText = "No Response From RandomAPI"
-		fmt.Println(errorText + " " + globalConfig.RandomURL)
+		fmt.Println(errorText + " " + health_url)
 		fmt.Println("Quietly exiting now. Please reconfigure.")
 		return false, errorText
 	}
@@ -53,10 +53,9 @@ func checkCreds() (bool, string) {
 
 func getAllUsers(logger *logrus.Logger) ([]string, error) {
 	//setup TLS client
-	ts := tlsClient(globalConfig.RandomURL)
+	ts := tlsClient(globalConfig.PrimaryURL)
 
-	urlSlice := strings.Split(globalConfig.ExchangeURL, "/")
-	url := "https://" + urlSlice[2] + "/api/userList"
+	url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "api/userList")
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
@@ -90,10 +89,9 @@ func getAllUsers(logger *logrus.Logger) ([]string, error) {
 
 func getFriends(logger *logrus.Logger) ([]string, error) {
 	//setup TLS client
-	ts := tlsClient(globalConfig.RandomURL)
+	ts := tlsClient(globalConfig.PrimaryURL)
 
-	urlSlice := strings.Split(globalConfig.ExchangeURL, "/")
-	url := "https://" + urlSlice[2] + "/api/friendsList"
+	url := fmt.Sprintf("https://%s/%s", globalConfig.PrimaryURL, "api/friendsList")
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
@@ -138,10 +136,9 @@ func putFriends(logger *logrus.Logger) error {
 	logger.Debug("Putting payload to API: ", final)
 
 	//setup TLS client
-	ts := tlsClient(globalConfig.RandomURL)
-	urlSlice := strings.Split(globalConfig.ExchangeURL, "/")
-	url := "https://" + urlSlice[2] + "/api/updateFriendsList"
+	ts := tlsClient(globalConfig.PrimaryURL)
 
+	url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "api/updateFriendsList")
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
@@ -159,10 +156,9 @@ func putFriends(logger *logrus.Logger) error {
 
 func getExUsers(logger *logrus.Logger) ([]string, error) {
 	//setup TLS client
-	ts := tlsClient(globalConfig.RandomURL)
+	ts := tlsClient(globalConfig.PrimaryURL)
 
-	urlSlice := strings.Split(globalConfig.ExchangeURL, "/")
-	url := "https://" + urlSlice[2] + "/ws/listUsers"
+	url := fmt.Sprintf("https://%s/%s", globalConfig.PrimaryURL, "ws/listUsers")
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
@@ -196,10 +192,9 @@ func getExUsers(logger *logrus.Logger) ([]string, error) {
 
 func getAcctType(logger *logrus.Logger) (string, error) {
 	//setup TLS client
-	ts := tlsClient(globalConfig.RandomURL)
+	ts := tlsClient(globalConfig.PrimaryURL)
 
-	urlSlice := strings.Split(globalConfig.ExchangeURL, "/")
-	url := "https://" + urlSlice[2] + "/api/premiumCheck"
+	url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "api/premiumCheck")
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
@@ -234,10 +229,9 @@ func binIsCurrent(logger *logrus.Logger) bool {
 	}
 
 	//setup TLS client
-	ts := tlsClient(globalConfig.RandomURL)
+	ts := tlsClient(globalConfig.PrimaryURL)
 
-	urlSlice := strings.Split(globalConfig.ExchangeURL, "/")
-	url := "https://" + urlSlice[2] + "/api/clientVersionCheck"
+	url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "api/clientVersionCheck")
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
@@ -262,10 +256,10 @@ func binIsCurrent(logger *logrus.Logger) bool {
 
 func apiStatusCheck(logger *logrus.Logger) {
 	//setup tls
-	ts := tlsClient(globalConfig.RandomURL)
+	ts := tlsClient(globalConfig.PrimaryURL)
 	//check and make sure inserted creds
 	//Random and Exchange will use same mongo, so the creds will be valid for both
-	health_url := fmt.Sprintf("%s%s", globalConfig.RandomURL, "/healthcheck")
+	health_url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "/api/healthcheck")
 	req, _ := http.NewRequest("GET", health_url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
@@ -324,11 +318,10 @@ func apiStatusCheck(logger *logrus.Logger) {
 
 func exStatusCheck(logger *logrus.Logger) {
 	//setup tls
-	ts := tlsClient(globalConfig.ExchangeURL)
+	ts := tlsClient(globalConfig.PrimaryURL)
 	//check and make sure inserted creds
 	//Random and EXchange will use same mongo, so the creds will be valid for both
-	health_url := fmt.Sprintf("%s%s", strings.Replace(globalConfig.RandomURL, "api", "ws", -1), "/healthcheck")
-	logger.Debug(health_url)
+	health_url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "ws/healthcheck")
 	req, _ := http.NewRequest("GET", health_url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)

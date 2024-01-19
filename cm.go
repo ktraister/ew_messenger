@@ -63,13 +63,13 @@ func (cm *ConnectionManager) Close() {
 
 func exConnect(logger *logrus.Logger, configuration Configurations, user string) (*ConnectionManager, error) {
 	// Parse the WebSocket URL
-	u, err := url.Parse(configuration.ExchangeURL)
+	u, err := url.Parse(fmt.Sprintf("wss://%s:443/ws", configuration.PrimaryURL))
 	if err != nil {
 		logger.Error(err)
 		return &ConnectionManager{}, err
 	}
 
-	tlsConfig := tlsConfig(configuration.ExchangeURL)
+	tlsConfig := tlsConfig(configuration.PrimaryURL)
 	dialer := websocket.Dialer{
 		TLSClientConfig: tlsConfig,
 	}

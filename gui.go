@@ -811,8 +811,7 @@ func main() {
 
 	// Reading variables using the model
 	logger.Debug("Reading variables using the model..")
-	logger.Debug("randomURL is\t\t", globalConfig.RandomURL)
-	logger.Debug("exchangeURL is\t", globalConfig.ExchangeURL)
+	logger.Debug("PrimaryURL is\t\t", globalConfig.PrimaryURL)
 	logger.Debug("sshHost is\t\t", globalConfig.SSHHost)
 
 	//add "starting up" message while loading
