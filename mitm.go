@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2/widget"
 	"github.com/sirupsen/logrus"
-	"strings"
 	"time"
 )
 
@@ -27,14 +26,12 @@ func mitmStatusCheck(logger *logrus.Logger) {
 	//we up
 	statusMsgChan <- statusMsg{Target: "MITM", Text: "GO", Import: widget.SuccessImportance, Warn: ""}
 
-	ts := tlsConfig(globalConfig.RandomURL)
-	health_url := fmt.Sprintf("%s%s", strings.Replace(globalConfig.RandomURL, "api", "ws", -1), "/healthcheck")
-
+	ts := tlsConfig(globalConfig.PrimaryURL)
+	// Make a TLS connection to the specified domain
 	for {
 		time.Sleep(10 * time.Second)
 
-		// Make a TLS connection to the specified domain
-		conn, err := tls.Dial("tcp", health_url, ts)
+		conn, err := tls.Dial("tcp", fmt.Sprintf("%s/%s", globalConfig.PrimaryURL, "api/healthcheck") , ts)
 		if err != nil {
 			logger.Error("MITM Error dialing:", err)
 			statusMsgChan <- statusMsg{Target: "MITM", Text: "WARN", Import: widget.WarningImportance, Warn: "Possible MITM attack detected"}

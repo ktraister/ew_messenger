@@ -19,8 +19,7 @@ func proxyCheck() bool {
 }
 
 func proxyFail() {
-	globalConfig.RandomURL = configuredRandomURL
-	globalConfig.ExchangeURL = configuredExchangeURL
+	globalConfig.PrimaryURL = configuredPrimaryURL
 	statusMsgChan <- statusMsg{Target: "PROXY", Text: "WARN", Import: widget.WarningImportance, Warn: "Proxy operation failed. \nTraffic will be routed normally."}
 }
 
@@ -104,8 +103,7 @@ func proxy(logger *logrus.Logger) {
 	defer localListener.Close()
 
 	proxyPort = localListener.Addr().(*net.TCPAddr).Port
-	globalConfig.RandomURL = fmt.Sprintf("https://localhost:%d/api/otp", proxyPort)
-	globalConfig.ExchangeURL = fmt.Sprintf("wss://localhost:%d/ws", proxyPort)
+	globalConfig.PrimaryURL = fmt.Sprintf("localhost:%d", proxyPort)
 
 	logger.Info(fmt.Sprintf("Local port forwarding started on port %d...", proxyPort))
 	statusMsgChan <- statusMsg{Target: "PROXY", Text: "GO", Import: widget.SuccessImportance, Warn: ""}
