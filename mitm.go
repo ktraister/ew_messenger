@@ -26,12 +26,12 @@ func mitmStatusCheck(logger *logrus.Logger) {
 	//we up
 	statusMsgChan <- statusMsg{Target: "MITM", Text: "GO", Import: widget.SuccessImportance, Warn: ""}
 
-	ts := tlsConfig(globalConfig.PrimaryURL)
 	// Make a TLS connection to the specified domain
 	for {
 		time.Sleep(10 * time.Second)
 
-		conn, err := tls.Dial("tcp", fmt.Sprintf("%s/%s", globalConfig.PrimaryURL, "api/healthcheck") , ts)
+	        ts := tlsConfig(globalConfig.PrimaryURL)
+		conn, err := tls.Dial("tcp", globalConfig.PrimaryURL, ts)
 		if err != nil {
 			logger.Error("MITM Error dialing:", err)
 			statusMsgChan <- statusMsg{Target: "MITM", Text: "WARN", Import: widget.WarningImportance, Warn: "Possible MITM attack detected"}
