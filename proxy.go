@@ -59,7 +59,7 @@ func proxy(logger *logrus.Logger) {
 
 	// hard-coding proxy vars, but ingesting creds
 	sshServer := globalConfig.SSHHost
-	sshPort := 2222
+	sshPort := 443
 	sshUser := globalConfig.User
 	sshPassword := globalConfig.Passwd
 	localPort := 0
