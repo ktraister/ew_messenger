@@ -240,13 +240,13 @@ func listen(logger *logrus.Logger) {
 
 	//listen for incoming connections
 	for {
-		_, incoming, err := cm.Read()
+		incoming, err := cm.Read()
 		if err != nil {
 			logger.Error("Error reading message:", err)
 			continue
 		}
 
-		err = json.Unmarshal([]byte(incoming), &dat)
+		err = json.Unmarshal(incoming, &dat)
 		if err != nil {
 			logger.Error("Error unmarshalling json:", err)
 			continue

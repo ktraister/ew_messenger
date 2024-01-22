@@ -1,20 +1,28 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"go.dedis.ch/kyber/v3"
+	"go.dedis.ch/kyber/v3/encrypt/ecies"
+	"go.dedis.ch/kyber/v3/group/edwards25519"
 	"net/http"
 	"net/url"
 	"sync"
 )
 
+var suite = edwards25519.NewBlakeSHA256Ed25519()
+
 // start CM
 type ConnectionManager struct {
-	conn     *websocket.Conn
-	mu       sync.Mutex
-	isClosed bool
+	conn         *websocket.Conn
+	mu           sync.Mutex
+	remotePubKey kyber.Point
+	localPrivKey kyber.Scalar
+	isClosed     bool
 }
 
 func (cm *ConnectionManager) Send(message []byte) error {
@@ -24,7 +32,14 @@ func (cm *ConnectionManager) Send(message []byte) error {
 		return fmt.Errorf("connection is closed")
 	}
 
-	err := cm.conn.WriteMessage(websocket.TextMessage, []byte(message))
+	//encrypt the message
+	cipherText, err := ecies.Encrypt(suite, cm.remotePubKey, []byte(message), suite.Hash)
+	if err != nil {
+		return err
+	}
+
+	cipherTextStr := base64.StdEncoding.EncodeToString(cipherText)
+	err = cm.conn.WriteMessage(websocket.TextMessage, []byte(cipherTextStr))
 	if err != nil {
 		return err
 	}
@@ -34,21 +49,32 @@ func (cm *ConnectionManager) Send(message []byte) error {
 	return nil
 }
 
-func (cm *ConnectionManager) Read() (int, []byte, error) {
+func (cm *ConnectionManager) Read() ([]byte, error) {
 	cm.mu.Lock()
 
 	if cm.isClosed {
-		return 0, []byte{}, fmt.Errorf("connection is closed")
+		return []byte{}, fmt.Errorf("connection is closed")
 	}
 
-	i, b, err := cm.conn.ReadMessage()
+	_, b, err := cm.conn.ReadMessage()
 	if err != nil {
-		return i, b, err
+		return b, err
+	}
+
+	decodedBytes, err := base64.StdEncoding.DecodeString(string(b))
+	if err != nil {
+		fmt.Println("Error decoding base64:", err)
+		return b, err
+	}
+
+	plainText, err := ecies.Decrypt(suite, cm.localPrivKey, decodedBytes, suite.Hash)
+	if err != nil {
+		return b, err
 	}
 
 	cm.mu.Unlock()
 
-	return i, b, nil
+	return plainText, nil
 }
 
 func (cm *ConnectionManager) Close() {
@@ -86,17 +112,39 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 		conn: conn,
 	}
 
-	//connect to exchange with our username for mapping
-	message := &Message{Type: "startup", User: user}
-	b, err := json.Marshal(message)
+	qPubKey := suite.Point()
+	qPubKeyData, err := qPubKey.MarshalBinary()
 	if err != nil {
 		logger.Error(err)
 		return &ConnectionManager{}, err
 	}
-	err = connectionManager.Send(b)
-	if err != nil {
-		logger.Error(err)
-		return &ConnectionManager{}, err
+	localPubKeyStr := base64.StdEncoding.EncodeToString(qPubKeyData)
+
+	//sending the startup message to map user, send computed local pubkey using remote privkey compiled in
+	for _, key := range configuration.KyberRemotePubKeys {
+		//lets use our connManager plumbing here
+		err = qPubKey.UnmarshalBinary([]byte(key))
+		if err != nil {
+			continue
+		}
+		connectionManager.remotePubKey = qPubKey
+
+		//connect to exchange with our username for mapping
+		message := &Message{Type: "startup", User: user, Msg: localPubKeyStr}
+		b, err := json.Marshal(message)
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		err = connectionManager.Send(b)
+		if err != nil {
+			logger.Error(err)
+			continue
+		}
+
+		//now we receive a mapping reply -- either RESET or OK
+
 	}
 
 	return connectionManager, nil
