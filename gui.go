@@ -353,9 +353,9 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	go msgRouter(logger)
 
 	//goroutines to check for api and exchange status
-	go apiStatusCheck(logger)
-	go exStatusCheck(logger)
-	go mitmStatusCheck(logger)
+	//go apiStatusCheck(logger)
+	//go exStatusCheck(logger)
+	//go mitmStatusCheck(logger)
 
 	//statusManager goroutine
 	go statusMgr(logger)
@@ -472,7 +472,7 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 	friendUsers, _ = getFriends(logger)
 	tmpFriendUsers = friendUsers
 	//add a goroutine here to read ExchangeAPI for live users and populate with labels
-	go refreshUsers(logger, userContainer, friendContainer)
+	//go refreshUsers(logger, userContainer, friendContainer)
 
 	//add container to hold the users list
 	bLine2 := canvas.NewLine(color.RGBA{0, 0, 0, 255})

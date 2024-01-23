@@ -112,7 +112,7 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 		conn: conn,
 	}
 
-	qPubKey := suite.Point()
+	qPubKey := globalConfig.KyberPubKey
 	qPubKeyData, err := qPubKey.MarshalBinary()
 	if err != nil {
 		logger.Error(err)
@@ -120,14 +120,16 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 	}
 	localPubKeyStr := base64.StdEncoding.EncodeToString(qPubKeyData)
 
+	publicKeyPoint := suite.Point().Base()
 	//sending the startup message to map user, send computed local pubkey using remote privkey compiled in
 	for _, key := range configuration.KyberRemotePubKeys {
 		//lets use our connManager plumbing here
-		err = qPubKey.UnmarshalBinary([]byte(key))
-		if err != nil {
+		if err := publicKeyPoint.UnmarshalBinary(key); err != nil {
+			logger.Error("Error setting public key:", err)
 			continue
 		}
-		connectionManager.remotePubKey = qPubKey
+
+		connectionManager.remotePubKey = publicKeyPoint
 
 		//connect to exchange with our username for mapping
 		message := &Message{Type: "startup", User: user, Msg: localPubKeyStr}
@@ -144,8 +146,13 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 		}
 
 		//now we receive a mapping reply -- either RESET or OK
-
+		_, err = connectionManager.Read()
+		if err != nil {
+			return &ConnectionManager{}, err
+		}
 	}
+
+	//add error return here in case we cant marshall any public keys for the server
 
 	return connectionManager, nil
 }
