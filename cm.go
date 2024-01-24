@@ -4,6 +4,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"errors"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"go.dedis.ch/kyber/v3"
@@ -61,16 +63,24 @@ func (cm *ConnectionManager) Read() ([]byte, error) {
 		return b, err
 	}
 
-	decodedBytes, err := base64.StdEncoding.DecodeString(string(b))
+	inString := fmt.Sprintf("%s", b)
+
+	fmt.Println("Incoming raw read data --> ", inString)
+
+	decodedBytes, err := base64.StdEncoding.DecodeString(inString)
 	if err != nil {
 		fmt.Println("Error decoding base64:", err)
 		return b, err
 	}
 
+	fmt.Println("Incoming decoded data --> ", string(decodedBytes))
+
 	plainText, err := ecies.Decrypt(suite, cm.localPrivKey, decodedBytes, suite.Hash)
 	if err != nil {
 		return b, err
 	}
+
+	fmt.Println("Incoming plaingtext data --> ", plainText)
 
 	cm.mu.Unlock()
 
@@ -110,6 +120,7 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 
 	connectionManager := &ConnectionManager{
 		conn: conn,
+		localPrivKey: globalConfig.KyberPrivKey,
 	}
 
 	qPubKey := globalConfig.KyberPubKey
@@ -121,6 +132,7 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 	localPubKeyStr := base64.StdEncoding.EncodeToString(qPubKeyData)
 
 	publicKeyPoint := suite.Point().Base()
+	GO := false
 	//sending the startup message to map user, send computed local pubkey using remote privkey compiled in
 	for _, key := range configuration.KyberRemotePubKeys {
 		//lets use our connManager plumbing here
@@ -146,13 +158,23 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 		}
 
 		//now we receive a mapping reply -- either RESET or OK
-		_, err = connectionManager.Read()
+		b, err = connectionManager.Read()
 		if err != nil {
 			return &ConnectionManager{}, err
 		}
+
+		logger.Warn(string(b))
+
+		if strings.Contains(string(b), "GO") {
+		     GO = true
+		     break
+		}
 	}
 
-	//add error return here in case we cant marshall any public keys for the server
+	if !GO {
+	        err = errors.New("No acceptable Public Key found for exchange")
+		return &ConnectionManager{}, err
+        }
 
 	return connectionManager, nil
 }
