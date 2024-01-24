@@ -3,9 +3,8 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"strings"
 	"errors"
+	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"go.dedis.ch/kyber/v3"
@@ -13,6 +12,7 @@ import (
 	"go.dedis.ch/kyber/v3/group/edwards25519"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 )
 
@@ -119,7 +119,7 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 	logger.Debug("Connected to exchange server!")
 
 	connectionManager := &ConnectionManager{
-		conn: conn,
+		conn:         conn,
 		localPrivKey: globalConfig.KyberPrivKey,
 	}
 
@@ -166,15 +166,15 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 		logger.Warn(string(b))
 
 		if strings.Contains(string(b), "GO") {
-		     GO = true
-		     break
+			GO = true
+			break
 		}
 	}
 
 	if !GO {
-	        err = errors.New("No acceptable Public Key found for exchange")
+		err = errors.New("No acceptable Public Key found for exchange")
 		return &ConnectionManager{}, err
-        }
+	}
 
 	return connectionManager, nil
 }
