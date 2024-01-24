@@ -77,8 +77,9 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	}
 	logger.Debug("Client:Read init HELO response")
 
+	logger.Debug("INCOMING --> ", string(incoming))
 	err = json.Unmarshal(incoming, &dat)
-	logger.Debug(dat)
+	logger.Debug("InData --> ", dat)
 	if err != nil {
 		logger.Error("Client:Error unmarshalling json:", err)
 		return sysErr
