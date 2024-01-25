@@ -30,7 +30,7 @@ func mitmStatusCheck(logger *logrus.Logger) {
 	for {
 		time.Sleep(10 * time.Second)
 
-	        ts := tlsConfig(globalConfig.PrimaryURL)
+		ts := tlsConfig(globalConfig.PrimaryURL)
 		conn, err := tls.Dial("tcp", globalConfig.PrimaryURL, ts)
 		if err != nil {
 			logger.Error("MITM Error dialing:", err)

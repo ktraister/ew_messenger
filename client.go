@@ -70,15 +70,16 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 
 	//HELO should be received within 5 seconds to proceed OR exit
 	cm.conn.SetReadDeadline(time.Now().Add(5 * time.Second))
-	_, incoming, err := cm.Read()
+	incoming, err := cm.Read()
 	if err != nil {
 		logger.Error("Client:Error reading message:", err)
 		return sysErr
 	}
 	logger.Debug("Client:Read init HELO response")
 
-	err = json.Unmarshal([]byte(incoming), &dat)
-	logger.Debug(dat)
+	logger.Debug("INCOMING --> ", string(incoming))
+	err = json.Unmarshal(incoming, &dat)
+	logger.Debug("InData --> ", dat)
 	if err != nil {
 		logger.Error("Client:Error unmarshalling json:", err)
 		return sysErr

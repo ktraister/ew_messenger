@@ -40,7 +40,6 @@ func uid() string {
 func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configuration Configurations) {
 	//the entire connection will be encrypted using a single kyber key per conn
 	suite := edwards25519.NewBlakeSHA256Ed25519()
-	//pretty sure I saw another way to generate these keys
 	qPrivKey := suite.Scalar().Pick(random.New())
 	qPubKey := suite.Point().Mul(qPrivKey, nil)
 	qPubKeyData, err := qPubKey.MarshalBinary()
@@ -89,13 +88,13 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 	logger.Debug("Responded with HELO_REPLY to ", targetUser)
 
 	//receive the encrypted text
-	_, incoming, err := cm.Read()
+	incoming, err := cm.Read()
 	if err != nil {
 		logger.Error("Error reading message:", err)
 		return
 	}
 
-	err = json.Unmarshal([]byte(incoming), &dat)
+	err = json.Unmarshal(incoming, &dat)
 	if err != nil {
 		logger.Error("Error unmarshalling json:", err)
 		return
