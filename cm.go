@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,7 @@ import (
 	"go.dedis.ch/kyber/v3"
 	"go.dedis.ch/kyber/v3/encrypt/ecies"
 	"go.dedis.ch/kyber/v3/group/edwards25519"
+	"math/big"
 	"net/http"
 	"net/url"
 	"strings"
@@ -133,10 +135,25 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 
 	publicKeyPoint := suite.Point().Base()
 	GO := false
+	tries := []int{}
 	//sending the startup message to map user, send computed local pubkey using remote privkey compiled in
-	for _, key := range configuration.KyberRemotePubKeys {
+	for i := 0; i < len(configuration.KyberRemotePubKeys); i++ {
+		//choose a configured pubkey at random, equal weights -- try each only once
+		var index int
+		ok := false
+		for !ok {
+			tmpIndex, _ := rand.Int(rand.Reader, big.NewInt(int64(len(configuration.KyberRemotePubKeys))))
+			if !contains(tries, int(tmpIndex.Int64())) {
+				fmt.Println("Picking ", tmpIndex)
+				index = int(tmpIndex.Int64())
+				tries = append(tries, index)
+				ok = true
+			}
+		}
+
 		//lets use our connManager plumbing here
-		if err := publicKeyPoint.UnmarshalBinary(key); err != nil {
+		err := publicKeyPoint.UnmarshalBinary(configuration.KyberRemotePubKeys[index])
+		if err != nil {
 			logger.Error("Error setting public key:", err)
 			continue
 		}
