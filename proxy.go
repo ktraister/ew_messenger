@@ -14,7 +14,6 @@ var proxyPort int
 
 // if true proxy
 func proxyCheck() bool {
-	//fmt.Println("returning proxy true")
 	return false
 }
 
