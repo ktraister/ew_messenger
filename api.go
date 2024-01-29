@@ -55,7 +55,7 @@ func getAllUsers(logger *logrus.Logger) ([]string, error) {
 	//setup TLS client
 	ts := tlsClient(globalConfig.PrimaryURL)
 
-	url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "api/userList")
+	url := fmt.Sprintf("https://%s/%s", globalConfig.PrimaryURL, "api/userList")
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
@@ -138,7 +138,7 @@ func putFriends(logger *logrus.Logger) error {
 	//setup TLS client
 	ts := tlsClient(globalConfig.PrimaryURL)
 
-	url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "api/updateFriendsList")
+	url := fmt.Sprintf("https://%s/%s", globalConfig.PrimaryURL, "api/updateFriendsList")
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)

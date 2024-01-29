@@ -58,8 +58,10 @@ func cnv(input float64) float64 {
 }
 
 func removeFriends() {
+        fmt.Println(friendUsers)
 	for _, user := range activeUsers {
 		if !isFriend(user) && !isNonFriend(user) {
+		        fmt.Println("Adding to nonFriendUsers --> ", user)
 			nonFriendUsers = append(nonFriendUsers, user)
 		}
 	}
@@ -77,6 +79,7 @@ func isActive(user string) bool {
 func isFriend(user string) bool {
 	for _, element := range friendUsers {
 		if element == user {
+		        fmt.Println("User is friend --> ", user)
 			return true
 		}
 	}
@@ -339,9 +342,10 @@ func post(cont *fyne.Container, userChan chan Post) {
 func refreshUsers(logger *logrus.Logger, userContainer *fyne.Container, friendContainer *fyne.Container) {
 	for {
 		friendUsers, _ = getFriends(logger)
-		friendContainer.Refresh()
 		activeUsers, _ = getExUsers(logger)
+		//this function is supposed to remove friends from users, but doesn't seem to be working correctly
 		removeFriends()
+		friendContainer.Refresh()
 		userContainer.Refresh()
 		//refresh rate
 		time.Sleep(1 * time.Second)
