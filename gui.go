@@ -446,6 +446,11 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 		//dont show as selected
 		friendList.UnselectAll()
 
+		//dont show window for inactive users
+		if !isActive(targetUser) {
+		        return
+		}
+
 		//create the new chan for the user here if not exists
 		_, ok := chanMap.Load(targetUser)
 		if ok {
