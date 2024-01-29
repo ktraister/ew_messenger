@@ -116,7 +116,7 @@ func ew_client(logger *logrus.Logger, configuration Configurations, message Post
 	logger.Debug("got base64 pubkey ", dat["msg"].(string))
 	decodedBytes, err := base64.StdEncoding.DecodeString(dat["msg"].(string))
 	if err != nil {
-		fmt.Println("Error decoding base64:", err)
+		logger.Error("Error decoding base64:", err)
 		return sysErr
 	}
 	logger.Debug("qPubKey data: ", decodedBytes)

@@ -21,7 +21,7 @@ func checkCreds() (bool, string) {
 	ts := tlsClient(globalConfig.PrimaryURL)
 	//check and make sure inserted creds
 	//Random and Exchange will use same mongo, so the creds will be valid for both
-	health_url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "healthcheck")
+	health_url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "api/healthcheck")
 	req, err := http.NewRequest("GET", health_url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)

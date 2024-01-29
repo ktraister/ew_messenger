@@ -67,22 +67,15 @@ func (cm *ConnectionManager) Read() ([]byte, error) {
 
 	inString := fmt.Sprintf("%s", b)
 
-	fmt.Println("Incoming raw read data --> ", inString)
-
 	decodedBytes, err := base64.StdEncoding.DecodeString(inString)
 	if err != nil {
-		fmt.Println("Error decoding base64:", err)
 		return b, err
 	}
-
-	fmt.Println("Incoming decoded data --> ", string(decodedBytes))
 
 	plainText, err := ecies.Decrypt(suite, cm.localPrivKey, decodedBytes, suite.Hash)
 	if err != nil {
 		return b, err
 	}
-
-	fmt.Println("Incoming plaingtext data --> ", plainText)
 
 	cm.mu.Unlock()
 
@@ -144,7 +137,6 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 		for !ok {
 			tmpIndex, _ := rand.Int(rand.Reader, big.NewInt(int64(len(configuration.KyberRemotePubKeys))))
 			if !contains(tries, int(tmpIndex.Int64())) {
-				fmt.Println("Picking ", tmpIndex)
 				index = int(tmpIndex.Int64())
 				tries = append(tries, index)
 				ok = true
