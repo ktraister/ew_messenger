@@ -783,7 +783,6 @@ func manageFriendsWin(logger *logrus.Logger, myApp fyne.App) {
 		} else {
 			tmpFriendUsers = append(tmpFriendUsers, allUsers[id])
 		}
-		fmt.Println(friendUsers)
 		userList.UnselectAll()
 		userList.Refresh()
 	}

@@ -64,7 +64,6 @@ func fetchConfig() Configurations {
 			"ECDSA",
 		},
 	}
-
 	/*
 		//localdev debug config
 		defaultConfig := Configurations{
@@ -90,6 +89,7 @@ func fetchConfig() Configurations {
 			},
 		}
 	*/
+
 	configuredPrimaryURL = defaultConfig.PrimaryURL
 
 	return defaultConfig
