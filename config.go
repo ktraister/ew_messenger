@@ -64,6 +64,7 @@ func fetchConfig() Configurations {
 			"ECDSA",
 		},
 	}
+
 	/*
 		//localdev debug config
 		defaultConfig := Configurations{
