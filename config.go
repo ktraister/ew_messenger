@@ -38,7 +38,6 @@ func fetchConfig() Configurations {
 	qPrivKey := suite.Scalar().Pick(random.New())
 	qPubKey := suite.Point().Mul(qPrivKey, nil)
 
-	/*
 	//create default config
 	defaultConfig := Configurations{
 		PrimaryURL:   "endlesswaltz.xyz",
@@ -65,8 +64,8 @@ func fetchConfig() Configurations {
 			"ECDSA",
 		},
 	}
-	*/
 
+	/*
 		//localdev debug config
 		defaultConfig := Configurations{
 			PrimaryURL:   "localhost",
@@ -90,6 +89,7 @@ func fetchConfig() Configurations {
 				"RSA",
 			},
 		}
+	*/
 
 	configuredPrimaryURL = defaultConfig.PrimaryURL
 

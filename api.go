@@ -26,7 +26,7 @@ func checkCreds() (bool, string) {
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
 	req.Header.Set("Passwd", globalConfig.Passwd)
-	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	errorText := ""
 	if err != nil {
@@ -60,7 +60,7 @@ func getAllUsers(logger *logrus.Logger) ([]string, error) {
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
 	req.Header.Set("Passwd", globalConfig.Passwd)
-	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Error(err)
@@ -96,7 +96,7 @@ func getFriends(logger *logrus.Logger) ([]string, error) {
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
 	req.Header.Set("Passwd", globalConfig.Passwd)
-	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Error(err)
@@ -144,7 +144,7 @@ func putFriends(logger *logrus.Logger) error {
 	req.Header.Set("User", globalConfig.User)
 	req.Header.Set("Passwd", globalConfig.Passwd)
 
-	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	_, err = client.Do(req)
 	if err != nil {
 		logger.Error(err)
@@ -163,7 +163,7 @@ func getExUsers(logger *logrus.Logger) ([]string, error) {
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
 	req.Header.Set("Passwd", globalConfig.Passwd)
-	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Error(err)
@@ -199,7 +199,7 @@ func getAcctType(logger *logrus.Logger) (string, error) {
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
 	req.Header.Set("Passwd", globalConfig.Passwd)
-	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	var final string
 	for i := 0; i <= 3; i++ {
 		resp, err := client.Do(req)
@@ -236,7 +236,7 @@ func binIsCurrent(logger *logrus.Logger) bool {
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
 	req.Header.Set("Passwd", globalConfig.Passwd)
-	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Error(err)
@@ -264,7 +264,7 @@ func apiStatusCheck(logger *logrus.Logger) {
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
 	req.Header.Set("Passwd", globalConfig.Passwd)
-	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	healthy := true
 
 	for {
@@ -326,7 +326,7 @@ func exStatusCheck(logger *logrus.Logger) {
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	req.Header.Set("User", globalConfig.User)
 	req.Header.Set("Passwd", globalConfig.Passwd)
-	client := http.Client{Timeout: 3 * time.Second, Transport: ts}
+	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	healthy := true
 
 	for {

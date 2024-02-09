@@ -58,10 +58,10 @@ func cnv(input float64) float64 {
 }
 
 func removeFriends() {
-        fmt.Println(friendUsers)
+	fmt.Println(friendUsers)
 	for _, user := range activeUsers {
 		if !isFriend(user) && !isNonFriend(user) {
-		        fmt.Println("Adding to nonFriendUsers --> ", user)
+			fmt.Println("Adding to nonFriendUsers --> ", user)
 			nonFriendUsers = append(nonFriendUsers, user)
 		}
 	}
@@ -79,7 +79,7 @@ func isActive(user string) bool {
 func isFriend(user string) bool {
 	for _, element := range friendUsers {
 		if element == user {
-		        fmt.Println("User is friend --> ", user)
+			fmt.Println("User is friend --> ", user)
 			return true
 		}
 	}
@@ -452,7 +452,7 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 
 		//dont show window for inactive users
 		if !isActive(targetUser) {
-		        return
+			return
 		}
 
 		//create the new chan for the user here if not exists
