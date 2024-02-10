@@ -106,7 +106,7 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 	}
 
 	// Establish a WebSocket connection
-	conn, _, err := dialer.Dial(u.String(), http.Header{"Passwd": []string{configuration.Passwd}, "User": []string{user}})
+	conn, _, err := dialer.Dial(u.String(), http.Header{"Auth": []string{"you know the thing"}})
 	if err != nil {
 		logger.Error(fmt.Sprintf("Could not establish WebSocket connection with %s: %s", u.String(), err))
 		return &ConnectionManager{}, err
