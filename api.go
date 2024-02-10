@@ -2,10 +2,14 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"fyne.io/fyne/v2/widget"
 	"github.com/sirupsen/logrus"
+	"go.dedis.ch/kyber/v3/encrypt/ecies"
 	"io"
+	"math/big"
 	"net/http"
 	"sort"
 	"strings"
@@ -16,16 +20,45 @@ func removeIndex(s []string, index int) []string {
 	return append(s[:index], s[index+1:]...)
 }
 
+func buildAuthHeader() (string, error) {
+	i, _ := rand.Int(rand.Reader, big.NewInt(int64(len(globalConfig.KyberRemotePubKeys))))
+	index := int(i.Int64())
+	fmt.Println("Using index ", index)
+	remotePubKey := suite.Point()
+	err := remotePubKey.UnmarshalBinary(globalConfig.KyberRemotePubKeys[index])
+	if err != nil {
+		return "", err
+	}
+
+	payload := fmt.Sprintf("%s:%s", globalConfig.User, globalConfig.Passwd)
+	//fmt.Println("Building auth header with ", payload)
+	//encrypt the message
+	cipherText, err := ecies.Encrypt(suite, remotePubKey, []byte(payload), suite.Hash)
+	if err != nil {
+		return "", err
+	}
+	//fmt.Println("encrypted auth header ", cipherText)
+
+	return base64.StdEncoding.EncodeToString(cipherText), nil
+}
+
 func checkCreds() (bool, string) {
 	//setup tls
 	ts := tlsClient(globalConfig.PrimaryURL)
+
+	authHeader, err := buildAuthHeader()
+	if err != nil {
+		return false, "Unable to encrypt credentials for transit"
+	}
+
+	fmt.Println(fmt.Sprintf("Shipping auth header in checkCreds --> %s", authHeader))
+
 	//check and make sure inserted creds
 	//Random and Exchange will use same mongo, so the creds will be valid for both
 	health_url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "api/healthcheck")
 	req, err := http.NewRequest("GET", health_url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", globalConfig.User)
-	req.Header.Set("Passwd", globalConfig.Passwd)
+	req.Header.Set("Auth", authHeader)
 	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	errorText := ""
@@ -55,11 +88,15 @@ func getAllUsers(logger *logrus.Logger) ([]string, error) {
 	//setup TLS client
 	ts := tlsClient(globalConfig.PrimaryURL)
 
+	authHeader, err := buildAuthHeader()
+	if err != nil {
+		return []string{}, fmt.Errorf("Unable to encrypt credentials for transit")
+	}
+
 	url := fmt.Sprintf("https://%s/%s", globalConfig.PrimaryURL, "api/userList")
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", globalConfig.User)
-	req.Header.Set("Passwd", globalConfig.Passwd)
+	req.Header.Set("Auth", authHeader)
 	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -91,11 +128,15 @@ func getFriends(logger *logrus.Logger) ([]string, error) {
 	//setup TLS client
 	ts := tlsClient(globalConfig.PrimaryURL)
 
+	authHeader, err := buildAuthHeader()
+	if err != nil {
+		return []string{}, fmt.Errorf("Unable to encrypt credentials for transit")
+	}
+
 	url := fmt.Sprintf("https://%s/%s", globalConfig.PrimaryURL, "api/friendsList")
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", globalConfig.User)
-	req.Header.Set("Passwd", globalConfig.Passwd)
+	req.Header.Set("Auth", authHeader)
 	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -138,11 +179,15 @@ func putFriends(logger *logrus.Logger) error {
 	//setup TLS client
 	ts := tlsClient(globalConfig.PrimaryURL)
 
+	authHeader, err := buildAuthHeader()
+	if err != nil {
+		return fmt.Errorf("Unable to encrypt credentials for transit")
+	}
+
 	url := fmt.Sprintf("https://%s/%s", globalConfig.PrimaryURL, "api/updateFriendsList")
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", globalConfig.User)
-	req.Header.Set("Passwd", globalConfig.Passwd)
+	req.Header.Set("Auth", authHeader)
 
 	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	_, err = client.Do(req)
@@ -158,11 +203,15 @@ func getExUsers(logger *logrus.Logger) ([]string, error) {
 	//setup TLS client
 	ts := tlsClient(globalConfig.PrimaryURL)
 
+	authHeader, err := buildAuthHeader()
+	if err != nil {
+		return []string{}, fmt.Errorf("Unable to encrypt credentials for transit")
+	}
+
 	url := fmt.Sprintf("https://%s/%s", globalConfig.PrimaryURL, "ws/listUsers")
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", globalConfig.User)
-	req.Header.Set("Passwd", globalConfig.Passwd)
+	req.Header.Set("Auth", authHeader)
 	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -194,11 +243,15 @@ func getAcctType(logger *logrus.Logger) (string, error) {
 	//setup TLS client
 	ts := tlsClient(globalConfig.PrimaryURL)
 
+	authHeader, err := buildAuthHeader()
+	if err != nil {
+		return "woops", fmt.Errorf("Unable to encrypt credentials for transit")
+	}
+
 	url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "api/premiumCheck")
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", globalConfig.User)
-	req.Header.Set("Passwd", globalConfig.Passwd)
+	req.Header.Set("Auth", authHeader)
 	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	var final string
 	for i := 0; i <= 3; i++ {
@@ -231,11 +284,16 @@ func binIsCurrent(logger *logrus.Logger) bool {
 	//setup TLS client
 	ts := tlsClient(globalConfig.PrimaryURL)
 
+	authHeader, err := buildAuthHeader()
+	if err != nil {
+		logger.Error("Unable to encrypt credentials for transit")
+		return false
+	}
+
 	url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "api/clientVersionCheck")
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", globalConfig.User)
-	req.Header.Set("Passwd", globalConfig.Passwd)
+	req.Header.Set("Auth", authHeader)
 	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -257,13 +315,19 @@ func binIsCurrent(logger *logrus.Logger) bool {
 func apiStatusCheck(logger *logrus.Logger) {
 	//setup tls
 	ts := tlsClient(globalConfig.PrimaryURL)
+
+	authHeader, err := buildAuthHeader()
+	if err != nil {
+		logger.Error("Unable to encrypt creds in apiStatusCheck")
+		return
+	}
+
 	//check and make sure inserted creds
 	//Random and Exchange will use same mongo, so the creds will be valid for both
 	health_url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "/api/healthcheck")
 	req, _ := http.NewRequest("GET", health_url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", globalConfig.User)
-	req.Header.Set("Passwd", globalConfig.Passwd)
+	req.Header.Set("Auth", authHeader)
 	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	healthy := true
 
@@ -319,13 +383,19 @@ func apiStatusCheck(logger *logrus.Logger) {
 func exStatusCheck(logger *logrus.Logger) {
 	//setup tls
 	ts := tlsClient(globalConfig.PrimaryURL)
+
+	authHeader, err := buildAuthHeader()
+	if err != nil {
+		logger.Error("Unable to encrypt credentials for transit")
+		return
+	}
+
 	//check and make sure inserted creds
 	//Random and EXchange will use same mongo, so the creds will be valid for both
 	health_url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "ws/healthcheck")
 	req, _ := http.NewRequest("GET", health_url, nil)
 	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
-	req.Header.Set("User", globalConfig.User)
-	req.Header.Set("Passwd", globalConfig.Passwd)
+	req.Header.Set("Auth", authHeader)
 	client := http.Client{Timeout: 10 * time.Second, Transport: ts}
 	healthy := true
 

@@ -94,7 +94,7 @@ func (cm *ConnectionManager) Close() {
 
 func exConnect(logger *logrus.Logger, configuration Configurations, user string) (*ConnectionManager, error) {
 	// Parse the WebSocket URL
-	u, err := url.Parse(fmt.Sprintf("wss://%s:443/ws", configuration.PrimaryURL))
+	u, err := url.Parse(fmt.Sprintf("wss://%s/ws", configuration.PrimaryURL))
 	if err != nil {
 		logger.Error(err)
 		return &ConnectionManager{}, err
@@ -105,8 +105,13 @@ func exConnect(logger *logrus.Logger, configuration Configurations, user string)
 		TLSClientConfig: tlsConfig,
 	}
 
+	authHeader, err := buildAuthHeader()
+	if err != nil {
+		return &ConnectionManager{}, fmt.Errorf("Unable to encrypt credentials for transit")
+	}
+
 	// Establish a WebSocket connection
-	conn, _, err := dialer.Dial(u.String(), http.Header{"Passwd": []string{configuration.Passwd}, "User": []string{user}})
+	conn, _, err := dialer.Dial(u.String(), http.Header{"Auth": []string{authHeader}})
 	if err != nil {
 		logger.Error(fmt.Sprintf("Could not establish WebSocket connection with %s: %s", u.String(), err))
 		return &ConnectionManager{}, err
