@@ -438,8 +438,9 @@ func afterLogin(logger *logrus.Logger, myApp fyne.App) {
 				text.Importance = widget.HighImportance
 			} else {
 				//reset user text
-				text.Importance = widget.MediumImportance
-				if !isActive(friendUsers[id]) {
+				if isActive(friendUsers[id]) {
+					text.Importance = widget.MediumImportance
+				} else {
 					text.Importance = widget.LowImportance
 				}
 			}

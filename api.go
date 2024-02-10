@@ -23,18 +23,21 @@ func removeIndex(s []string, index int) []string {
 func buildAuthHeader() (string, error) {
 	i, _ := rand.Int(rand.Reader, big.NewInt(int64(len(globalConfig.KyberRemotePubKeys))))
 	index := int(i.Int64())
-	remotePubKey := suite.Point().Base()
+	fmt.Println("Using index ", index)
+	remotePubKey := suite.Point()
 	err := remotePubKey.UnmarshalBinary(globalConfig.KyberRemotePubKeys[index])
 	if err != nil {
 		return "", err
 	}
 
 	payload := fmt.Sprintf("%s:%s", globalConfig.User, globalConfig.Passwd)
+	//fmt.Println("Building auth header with ", payload)
 	//encrypt the message
 	cipherText, err := ecies.Encrypt(suite, remotePubKey, []byte(payload), suite.Hash)
 	if err != nil {
 		return "", err
 	}
+	//fmt.Println("encrypted auth header ", cipherText)
 
 	return base64.StdEncoding.EncodeToString(cipherText), nil
 }
@@ -47,6 +50,8 @@ func checkCreds() (bool, string) {
 	if err != nil {
 		return false, "Unable to encrypt credentials for transit"
 	}
+
+	fmt.Println(fmt.Sprintf("Shipping auth header in checkCreds --> %s", authHeader))
 
 	//check and make sure inserted creds
 	//Random and Exchange will use same mongo, so the creds will be valid for both
