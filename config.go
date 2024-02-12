@@ -88,7 +88,7 @@ func fetchConfig() Configurations {
 				"RSA",
 			},
 		}
-	*/
+		*/
 
 	configuredPrimaryURL = defaultConfig.PrimaryURL
 

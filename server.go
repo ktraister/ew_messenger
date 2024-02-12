@@ -50,8 +50,8 @@ func handleConnection(dat map[string]interface{}, logger *logrus.Logger, configu
 
 	//debug
 	logger.Debug("qPubKey data: ", qPubKeyData)
-	logger.Debug(fmt.Printf("Private key: %s\n", qPrivKey))
-	logger.Debug(fmt.Printf("Public key: %s\n", qPubKey))
+	logger.Debug(fmt.Sprintf("Private key: %s\n", qPrivKey))
+	logger.Debug(fmt.Sprintf("Public key: %s\n", qPubKey))
 
 	// Encode byte slice as base64
 	qPubKeyStr := base64.StdEncoding.EncodeToString(qPubKeyData)

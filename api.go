@@ -23,7 +23,6 @@ func removeIndex(s []string, index int) []string {
 func buildAuthHeader() (string, error) {
 	i, _ := rand.Int(rand.Reader, big.NewInt(int64(len(globalConfig.KyberRemotePubKeys))))
 	index := int(i.Int64())
-	fmt.Println("Using index ", index)
 	remotePubKey := suite.Point()
 	err := remotePubKey.UnmarshalBinary(globalConfig.KyberRemotePubKeys[index])
 	if err != nil {
@@ -31,13 +30,11 @@ func buildAuthHeader() (string, error) {
 	}
 
 	payload := fmt.Sprintf("%s:%s", globalConfig.User, globalConfig.Passwd)
-	//fmt.Println("Building auth header with ", payload)
 	//encrypt the message
 	cipherText, err := ecies.Encrypt(suite, remotePubKey, []byte(payload), suite.Hash)
 	if err != nil {
 		return "", err
 	}
-	//fmt.Println("encrypted auth header ", cipherText)
 
 	return base64.StdEncoding.EncodeToString(cipherText), nil
 }
@@ -51,8 +48,6 @@ func checkCreds() (bool, string) {
 		return false, "Unable to encrypt credentials for transit"
 	}
 
-	fmt.Println(fmt.Sprintf("Shipping auth header in checkCreds --> %s", authHeader))
-
 	//check and make sure inserted creds
 	//Random and Exchange will use same mongo, so the creds will be valid for both
 	health_url := fmt.Sprintf("https://%s:443/%s", globalConfig.PrimaryURL, "api/healthcheck")
@@ -64,21 +59,15 @@ func checkCreds() (bool, string) {
 	errorText := ""
 	if err != nil {
 		errorText = "Couldn't Connect to RandomAPI"
-		fmt.Println(errorText + " " + health_url)
-		fmt.Println("Quietly exiting now. Please reconfigure.")
 		return false, errorText
 	}
 	if resp == nil {
 		errorText = "No Response From RandomAPI"
-		fmt.Println(errorText + " " + health_url)
-		fmt.Println("Quietly exiting now. Please reconfigure.")
 		return false, errorText
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		errorText = "Invalid Username/Password Combination"
-		fmt.Println(errorText)
-		fmt.Printf("Request failed with status: %s\n", resp.Status)
 		return false, errorText
 	}
 	return true, ""
