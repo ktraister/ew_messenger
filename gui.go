@@ -58,10 +58,10 @@ func cnv(input float64) float64 {
 }
 
 func removeFriends() {
-	fmt.Println(friendUsers)
-	for _, user := range activeUsers {
-		if !isFriend(user) && !isNonFriend(user) {
-			fmt.Println("Adding to nonFriendUsers --> ", user)
+	for i, user := range activeUsers {
+	        if isFriend(user) && isNonFriend(user) {
+			nonFriendUsers = append(nonFriendUsers[:i], nonFriendUsers[i+1:]...)
+		} else if !isFriend(user) && !isNonFriend(user) {
 			nonFriendUsers = append(nonFriendUsers, user)
 		}
 	}
@@ -79,7 +79,6 @@ func isActive(user string) bool {
 func isFriend(user string) bool {
 	for _, element := range friendUsers {
 		if element == user {
-			fmt.Println("User is friend --> ", user)
 			return true
 		}
 	}
