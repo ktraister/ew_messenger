@@ -9,7 +9,7 @@ require (
 	github.com/gorilla/websocket v1.5.1
 	github.com/sirupsen/logrus v1.9.3
 	go.dedis.ch/kyber/v3 v3.1.0
-	golang.org/x/crypto v0.18.0
+	golang.org/x/crypto v0.21.0
 	golang.org/x/sync v0.6.0
 )
 
@@ -42,8 +42,8 @@ require (
 	golang.org/x/exp/shiny v0.0.0-20231006140011-7918f672742d // indirect
 	golang.org/x/image v0.11.0 // indirect
 	golang.org/x/mobile v0.0.0-20230531173138-3c911d8e3eda // indirect
-	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
